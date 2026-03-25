@@ -32,10 +32,11 @@ dist/
 .packages
 build/
 
-# Env files
+# Env files and templates
 .env
-.env.local
-.env.*.local
+.env.*
+*.env
+*.env.*
 
 # Logs
 *.log
@@ -49,3 +50,6 @@ staticfiles/
 
 # Legacy nested repo copy
 uytop/
+
+# Local-only docs
+docs/
