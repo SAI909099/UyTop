@@ -1,0 +1,264 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f7f4;
+  --surface: #ffffff;
+  --surface-muted: #e8eee8;
+  --border: #d8e2d8;
+  --text: #122019;
+  --text-muted: #5c6b63;
+  --accent: #0f766e;
+  --accent-strong: #115e59;
+  --danger: #b42318;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(180deg, #eef5ef 0%, #f7faf7 100%);
+  color: var(--text);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.catalog-page-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.catalog-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.catalog-stat-card {
+  display: grid;
+  gap: 10px;
+}
+
+.catalog-stat-card p,
+.catalog-stat-card a,
+.catalog-overview-list p,
+.catalog-record-item span,
+.catalog-field span,
+.catalog-map-fallback p,
+.catalog-map-fallback a,
+.catalog-error,
+.catalog-empty-state {
+  color: var(--text-muted);
+}
+
+.catalog-stat-card h2 {
+  margin: 0;
+  font-size: 2.2rem;
+}
+
+.catalog-overview-list {
+  display: grid;
+  gap: 18px;
+}
+
+.catalog-manager-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+}
+
+.catalog-list-panel,
+.catalog-form-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.catalog-map-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.catalog-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.catalog-panel-head h2 {
+  margin: 6px 0 0;
+  font-size: 1.8rem;
+}
+
+.catalog-eyebrow {
+  margin: 0;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+}
+
+.catalog-record-list {
+  display: grid;
+  gap: 10px;
+}
+
+.catalog-record-item {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.catalog-record-item-active {
+  border-color: var(--accent);
+  background: rgba(15, 118, 110, 0.06);
+}
+
+.catalog-two-column,
+.catalog-three-column,
+.catalog-four-column,
+.catalog-payment-grid,
+.catalog-checkbox-row {
+  display: grid;
+  gap: 14px;
+}
+
+.catalog-two-column {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.catalog-three-column {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.catalog-four-column,
+.catalog-payment-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.catalog-field {
+  display: grid;
+  gap: 8px;
+}
+
+.catalog-field input,
+.catalog-field textarea,
+.catalog-field select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+}
+
+.catalog-payment-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.catalog-payment-card input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+}
+
+.catalog-checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.catalog-checkbox-row {
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  align-items: center;
+}
+
+.catalog-checkbox-row label,
+.catalog-checkbox-row {
+  color: var(--text);
+}
+
+.catalog-map-canvas {
+  width: 100%;
+  min-height: 320px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.catalog-map-marker-shell {
+  background: transparent;
+  border: 0;
+}
+
+.catalog-map-marker {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 3px solid #ffffff;
+  box-shadow: 0 10px 20px rgba(17, 94, 89, 0.32);
+}
+
+.catalog-map-fallback {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--surface-muted);
+}
+
+.catalog-error {
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .catalog-manager-grid,
+  .catalog-stats-grid,
+  .catalog-four-column,
+  .catalog-payment-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .catalog-manager-grid,
+  .catalog-stats-grid,
+  .catalog-two-column,
+  .catalog-three-column,
+  .catalog-four-column,
+  .catalog-payment-grid,
+  .catalog-checkbox-row {
+    grid-template-columns: 1fr;
+  }
+}
