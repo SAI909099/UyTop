@@ -2,9 +2,9 @@
 
 ## Project
 UyTop - production-ready real estate marketplace with:
-- Flutter mobile app
 - Django + DRF backend
 - PostgreSQL + PostGIS
+- Next.js public web homepage
 - Next.js admin panel
 - Redis + Celery
 - Cloudinary
@@ -31,7 +31,7 @@ Keep implementation MVP-first, but production-oriented.
 1. Docs and structure
 2. Scaffolding
 3. Backend foundation
-4. Admin and mobile foundations
+4. Public web and admin foundations
 5. Review and cleanup
 6. Feature phases
 

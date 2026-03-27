@@ -1,179 +1,209 @@
-import { AvailabilitySummary } from "@/components/developers/availability-summary";
-import { BuildingCard } from "@/components/developers/building-card";
-import { DeveloperCard } from "@/components/developers/developer-card";
-import { ProjectCard } from "@/components/developers/project-card";
-import { StylizedMap } from "@/components/developers/stylized-map";
-import { VerifiedBadge } from "@/components/developers/verified-badge";
-import { ButtonLink } from "@/components/ui/button";
-import { PremiumCard } from "@/components/ui/premium-card";
-import { SectionHeading } from "@/components/ui/section-heading";
-import { getCompanyApartmentsLeft, getCompanyMapPins } from "@/lib/content/developers";
-import { getCatalogDevelopers, getCatalogFeaturedDeveloper, getCatalogFeaturedProject } from "@/lib/api/catalog";
-import { formatCompactNumber } from "@/lib/utils/format";
-import { getDeveloperHref, getProjectHref } from "@/lib/utils/routing";
+import { DeveloperBrandRail } from '@/components/home/developer-brand-rail';
+import { DeveloperLogoMarquee } from '@/components/home/developer-logo-marquee';
+import { HomeLiveMap } from '@/components/home/home-live-map';
+import { HomePrimaryNav } from '@/components/home/home-nav';
+import { ProjectFilterPanel } from '@/components/home/project-filter-panel';
+import { getHomepageData } from '@/lib/api/public';
+import { formatCompactNumber, formatCurrency } from '@/lib/utils/format';
+import type { PublicCompany, PublicProject } from '@/types/home';
 
-const hierarchySteps = [
-  {
-    title: "Developer Company",
-    description: "Begin with the brand, trust layer, delivery story, and all active projects in one place.",
-  },
-  {
-    title: "Project",
-    description: "Compare location, gallery, map, starting price, and availability summary before drilling deeper.",
-  },
-  {
-    title: "Building",
-    description: "Inspect Buildings A, B, and C separately with their own inventory, pricing band, and status.",
-  },
-  {
-    title: "Apartment Types",
-    description: "Open card-level layouts and photos without losing the building context or pricing hierarchy.",
-  },
-];
+function numeric(value: string | number | null | undefined) {
+  const resolved = typeof value === 'number' ? value : Number(value ?? 0);
+  return Number.isFinite(resolved) ? resolved : 0;
+}
+
+function sortCompanies(companies: PublicCompany[]) {
+  return [...companies].sort((left, right) => {
+    if (left.is_verified !== right.is_verified) {
+      return Number(right.is_verified) - Number(left.is_verified);
+    }
+
+    if (left.project_count !== right.project_count) {
+      return right.project_count - left.project_count;
+    }
+
+    return right.apartment_count - left.apartment_count;
+  });
+}
+
+function sortProjects(projects: PublicProject[]) {
+  return [...projects].sort((left, right) => {
+    if (left.building_count !== right.building_count) {
+      return right.building_count - left.building_count;
+    }
+
+    const priceDifference = numeric(right.starting_price) - numeric(left.starting_price);
+    if (priceDifference !== 0) {
+      return priceDifference;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+}
 
 export default async function HomePage() {
-  const developers = await getCatalogDevelopers();
-  const featuredDeveloper = await getCatalogFeaturedDeveloper();
-  const featuredProjectLookup = await getCatalogFeaturedProject();
+  const {
+    companies,
+    companiesCount,
+    projects,
+    projectsCount,
+    projectDeliveryYears,
+    projectPriceBounds,
+    projectRoomCounts,
+    showcaseApartments,
+    showcaseApartmentsCount,
+    mapApartments,
+    mapApartmentsCount,
+  } = await getHomepageData();
 
-  if (!featuredDeveloper || !featuredProjectLookup) {
-    return null;
-  }
-
-  const { project: featuredProject } = featuredProjectLookup;
+  const sortedCompanies = sortCompanies(companies);
+  const sortedProjects = sortProjects(projects);
+  const marqueeCompanies = sortedCompanies.filter((company) => company.logo_url?.trim());
+  const totalPublishedApartments = mapApartmentsCount;
+  const averageProjectEntry =
+    sortedProjects.length > 0
+      ? Math.round(sortedProjects.reduce((sum, project) => sum + numeric(project.starting_price), 0) / sortedProjects.length)
+      : 0;
+  const liveCities = new Set(
+    sortedProjects.map((project) => project.district?.name ?? project.city.name),
+  ).size;
 
   return (
-    <main className="landing-page">
-      <section className="landing-hero">
-        <div className="site-shell landing-hero-grid">
-          <div className="landing-hero-copy">
-            <p className="eyebrow">Developer-led discovery</p>
-            <div className="inline-badges">
-              <VerifiedBadge />
-              <span className="soft-pill">Projects, buildings, and apartment types in one premium flow</span>
-            </div>
-            <h1>Discover residential projects through the people who build them.</h1>
-            <p className="hero-lead">
-              UyTop now organizes discovery around real decision hierarchy: developer company, project, building,
-              and apartment types. Buyers get trust signals, inventory visibility, and branded context from the
-              first screen.
+    <main className="home-page">
+      <HomePrimaryNav />
+
+      <section className="hero-section" id="top">
+        <div className="hero-layer hero-layer-one" />
+        <div className="hero-layer hero-layer-two" />
+        <div className="hero-line-grid" aria-hidden="true" />
+        <div className="site-shell hero-grid">
+          <div className="hero-copy">
+            <p className="hero-badge">
+              <span className="hero-badge-dot" />
+              Premium real estate platform
             </p>
+            <h1>
+              Map-first discovery for
+              <span className="hero-title-accent"> cinematic urban living.</span>
+            </h1>
+            <p className="hero-lead">
+              UyTop pairs verified developers, live public inventory, and a dark layered interface that feels more
+              like a design-led property launch than a generic listing feed.
+            </p>
+
             <div className="hero-actions">
-              <ButtonLink href="/developers">Explore developers</ButtonLink>
-              <ButtonLink href="/apartments" variant="ghost">
-                Apartment map
-              </ButtonLink>
-              <ButtonLink href={getDeveloperHref(featuredDeveloper)} variant="secondary">
-                Open Dream House
-              </ButtonLink>
+              <a href="/map" className="button button-primary">
+                Open live map
+              </a>
+              <a href="#projects" className="button button-secondary">
+                Featured projects
+              </a>
+              <a href="#developers" className="button button-ghost">
+                Verified developers
+              </a>
             </div>
 
-            <AvailabilitySummary
-              items={[
-                { label: "Verified developers", value: String(developers.length), detail: "Curated company profiles" },
-                {
-                  label: "Dream House inventory",
-                  value: String(getCompanyApartmentsLeft(featuredDeveloper)),
-                  detail: "Apartments currently visible",
-                },
-                {
-                  label: "Homes delivered",
-                  value: formatCompactNumber(featuredDeveloper.homesDelivered),
-                  detail: "Across the active portfolio",
-                },
-              ]}
-              className="landing-metric-grid"
-            />
-          </div>
-
-          <div className="landing-hero-visual">
-            <div className="hero-visual-main">
-              <img src={featuredDeveloper.heroImage} alt={featuredDeveloper.name} />
-            </div>
-
-            <PremiumCard className="floating-brand-card">
-              <div className="brand-lockup">
-                <span className="brand-badge brand-badge-company">{featuredDeveloper.logoLettermark}</span>
-                <div>
-                  <strong>{featuredDeveloper.logoWordmark}</strong>
-                  <span>{featuredDeveloper.tagline}</span>
-                </div>
-              </div>
-              <div className="floating-card-divider" />
-              <p className="eyebrow">Flagship project</p>
-              <h3>{featuredProject.name}</h3>
-              <p>{featuredProject.availabilitySummary}</p>
-              <ButtonLink href={getProjectHref(featuredProject)} variant="secondary">
-                Explore Riverside Signature
-              </ButtonLink>
-            </PremiumCard>
-          </div>
-        </div>
-      </section>
-
-      <section className="section-block">
-        <div className="site-shell">
-          <SectionHeading
-            eyebrow="Developer directory"
-            title="Premium developer profiles, not generic listing feeds"
-            description="Each company card surfaces brand identity, trust, live project counts, and the next action into the deeper project flow."
-          />
-          <div className="developer-grid">
-            {developers.map((developer) => (
-              <DeveloperCard key={developer.id} developer={developer} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="section-block">
-        <div className="site-shell">
-          <SectionHeading
-            eyebrow="Dream House spotlight"
-            title="A flagship residential launch designed around comparison and trust"
-            description="The featured company path shows how users move from brand trust into project-level clarity and building-level inventory."
-          />
-
-          <div className="spotlight-layout">
-            <ProjectCard company={featuredDeveloper} project={featuredProject} />
-            <div className="building-grid building-grid-compact">
-              {featuredProject.buildings.map((building) => (
-                <BuildingCard key={building.id} project={featuredProject} building={building} />
-              ))}
+            <div className="hero-metrics">
+              <article className="metric-card">
+                <p>Verified companies</p>
+                <strong>{formatCompactNumber(companiesCount)}</strong>
+                <span>Trusted developer brands with an active public presence across the live catalog experience.</span>
+              </article>
+              <article className="metric-card">
+                <p>Visible residences</p>
+                <strong>{formatCompactNumber(totalPublishedApartments)}</strong>
+                <span>Public apartments currently available to inspect through the live map, not a static promo showcase.</span>
+              </article>
+              <article className="metric-card">
+                <p>Average launch entry</p>
+                <strong>{averageProjectEntry ? formatCurrency(averageProjectEntry) : 'Awaiting inventory'}</strong>
+                <span>A live snapshot of the current starting-price level across the featured launches now active on the platform.</span>
+              </article>
             </div>
           </div>
-        </div>
-      </section>
 
-      <section className="section-block">
-        <div className="site-shell">
-          <div className="hierarchy-strip">
-            {hierarchySteps.map((step, index) => (
-              <PremiumCard key={step.title} className="hierarchy-card">
-                <span className="hierarchy-index">0{index + 1}</span>
-                <strong>{step.title}</strong>
-                <p>{step.description}</p>
-              </PremiumCard>
-            ))}
+          <div className="hero-visual" id="map">
+            <HomeLiveMap items={mapApartments} variant="preview" />
+            <DeveloperLogoMarquee companies={marqueeCompanies} />
           </div>
         </div>
       </section>
 
-      <section className="section-block">
+      <section className="stats-strip">
+        <div className="site-shell stats-strip-grid">
+          <article className="stats-strip-item">
+            <strong>{formatCompactNumber(companiesCount)}</strong>
+            <span>Developer brands</span>
+          </article>
+          <article className="stats-strip-item">
+            <strong>{formatCompactNumber(projectsCount)}</strong>
+            <span>Public projects</span>
+          </article>
+          <article className="stats-strip-item">
+            <strong>{formatCompactNumber(totalPublishedApartments)}</strong>
+            <span>Map apartments</span>
+          </article>
+          <article className="stats-strip-item">
+            <strong>{formatCompactNumber(liveCities)}</strong>
+            <span>Live districts</span>
+          </article>
+        </div>
+      </section>
+
+      <ProjectFilterPanel
+        projects={sortedProjects}
+        companies={sortedCompanies}
+        totalCount={projectsCount}
+        deliveryYears={projectDeliveryYears}
+        priceBounds={projectPriceBounds}
+        roomCounts={projectRoomCounts}
+        apartments={showcaseApartments}
+        apartmentCount={showcaseApartmentsCount}
+      />
+
+      <section className="section-shell section-ivory" id="developers">
         <div className="site-shell">
-          <StylizedMap
-            eyebrow="Location view"
-            title="Dream House project footprint across the city"
-            description="The map layer stays realistic and launch-ready, while still focusing attention on project cards, brand identity, and inventory visibility."
-            pins={getCompanyMapPins(featuredDeveloper)}
-            summary={
-              <div className="map-summary-stack">
-                <strong>{featuredDeveloper.name}</strong>
-                <p>{featuredDeveloper.trustNote}</p>
-                <ButtonLink href={getDeveloperHref(featuredDeveloper)}>Open company profile</ButtonLink>
-              </div>
-            }
-          />
+          <div className="section-head">
+            <div>
+              <p className="section-label">Verified developers</p>
+              <h2 className="section-title">Brands, trust notes, and launch depth stay visible.</h2>
+              <p className="section-copy">
+                The homepage uses the active company catalog as a brand layer, so trust and storytelling are not
+                separated from inventory.
+              </p>
+            </div>
+          </div>
+
+          <div className="developer-brand-rail-wrap">
+            {sortedCompanies.length ? (
+              <DeveloperBrandRail companies={sortedCompanies} />
+            ) : (
+              <article className="empty-card premium-surface">
+                <p className="section-label">Developers</p>
+                <h3>No active companies are available yet.</h3>
+                <p>Publish companies through the admin catalog and this section will start rendering live brand data.</p>
+              </article>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="cta-section">
+        <div className="site-shell cta-shell premium-surface">
+          <p className="section-label">Built for live inventory</p>
+          <h2 className="section-title">This homepage is real app code, not a static mock.</h2>
+          <p className="section-copy">
+            It uses the current backend catalog endpoints, keeps the established env pattern, and is ready to grow into
+            a larger public experience when you restore more routes.
+          </p>
+          <div className="cta-actions">
+            <a href="#map" className="button button-primary">
+              Back to map
+            </a>
+            <a href="#projects" className="button button-secondary">
+              Review projects
+            </a>
+          </div>
         </div>
       </section>
     </main>

@@ -1,10 +1,10 @@
 # UyTop
 
-UyTop is a production-ready real estate marketplace with interactive map-based property discovery.
+UyTop is a real estate platform repository with backend services, a premium public web homepage, and admin operations.
 
 ## Stack
-- Mobile: Flutter
 - Backend: Django + Django REST Framework
+- Public web: Next.js
 - Database: PostgreSQL + PostGIS
 - Admin: Next.js
 - Background jobs: Redis + Celery
@@ -19,15 +19,15 @@ UyTop is a production-ready real estate marketplace with interactive map-based p
 - favorites, saved searches, recently viewed
 - owner analytics
 - multilingual foundation
-- future-ready public web expansion
+- stable backend contracts for public web, admin, and future client integrations
 
 ## Repository structure
 ```text
 /uytop
   /apps
-    /mobile
     /admin
     /backend
+    /web
   /packages
   /docs
   /infra
@@ -41,7 +41,7 @@ UyTop is a production-ready real estate marketplace with interactive map-based p
 
 ## Local foundation
 - backend foundation: Django + DRF project structure with split settings
-- mobile foundation: Flutter app shell with routing and API layer boundaries
+- public web foundation: Next.js homepage with live map, company, and project surfaces
 - admin foundation: Next.js app shell with protected layout starter
 
 Detailed environment and run instructions still need to be completed in the next phase.

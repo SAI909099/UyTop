@@ -1,15 +1,14 @@
 # Web
 
-This app contains the public customer-facing website for UyTop.
+This app contains the public homepage for UyTop.
 
 Current scope:
-- premium homepage
-- search results with map + list hybrid
-- property detail page
-- owner dashboard shell
-- backend read integration for browse flows
+- premium dark cinematic homepage
+- live backend-driven companies, projects, and map apartments
+- interactive Leaflet map
+- no public browse routes yet beyond `/`
 
 Run locally:
+- create `.env.local` from `.env.example`
 - install dependencies
-- set `.env.local` from `.env.example`
 - run `npm run dev`

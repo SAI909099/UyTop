@@ -461,7 +461,7 @@ export function ApartmentManager({
 
           <label className="catalog-checkbox-row">
             <input type="checkbox" checked={form.is_public} onChange={(event) => setForm({ ...form, is_public: event.target.checked })} />
-            Show on public web and apartment map
+            Expose through public catalog APIs
           </label>
 
           {error ? <p className="catalog-error">{error}</p> : null}

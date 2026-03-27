@@ -178,6 +178,18 @@ export function CompanyManager({ companies }: CompanyManagerProps) {
             <label className="catalog-field">
               <span>Logo URL</span>
               <input value={form.logo_url} onChange={(event) => setForm({ ...form, logo_url: event.target.value })} />
+              <small className="catalog-field-help">Used in the homepage developer logo strip under the map.</small>
+              {form.logo_url ? (
+                <div className="catalog-logo-preview">
+                  <div className="catalog-logo-preview-badge">
+                    <img src={form.logo_url} alt={`${form.name || 'Company'} logo preview`} />
+                  </div>
+                  <div className="catalog-logo-preview-copy">
+                    <strong>{form.name || 'Developer logo preview'}</strong>
+                    <span>Homepage marquee preview</span>
+                  </div>
+                </div>
+              ) : null}
             </label>
             <label className="catalog-field">
               <span>Hero image URL</span>

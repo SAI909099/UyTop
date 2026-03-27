@@ -2,7 +2,7 @@
   "name": "uytop-web",
   "private": true,
   "version": "0.1.0",
-  "description": "Public premium marketplace website for UyTop",
+  "description": "Public homepage for the UyTop real estate platform",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

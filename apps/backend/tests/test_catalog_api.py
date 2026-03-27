@@ -40,55 +40,61 @@ class CatalogApiTests(APITestCase):
             is_verified=True,
         )
 
-    def create_project(self, company):
-        return ResidentialProject.objects.create(
-            company=company,
-            name="Riverside Signature",
-            headline="Premium river-facing project",
-            description="Project description",
-            city=self.city,
-            district=self.district,
-            address="Sample address",
-            location_label="Riverfront",
-            starting_price=Decimal("150000.00"),
-            currency="USD",
-            delivery_window="Q4 2026",
-            hero_image_url="https://example.com/project.png",
-        )
+    def create_project(self, company, **overrides):
+        project_data = {
+            "company": company,
+            "name": "Riverside Signature",
+            "headline": "Premium river-facing project",
+            "description": "Project description",
+            "city": self.city,
+            "district": self.district,
+            "address": "Sample address",
+            "location_label": "Riverfront",
+            "starting_price": Decimal("150000.00"),
+            "currency": "USD",
+            "delivery_window": "Q4 2026",
+            "hero_image_url": "https://example.com/project.png",
+        }
+        project_data.update(overrides)
+        return ResidentialProject.objects.create(**project_data)
 
-    def create_building(self, project):
-        return ProjectBuilding.objects.create(
-            project=project,
-            code="A",
-            name="Building A",
-            status="sales_open",
-            handover="Q4 2026",
-            total_floors=16,
-            total_apartments=80,
-            price_from=Decimal("150000.00"),
-            price_to=Decimal("300000.00"),
-            cover_image_url="https://example.com/building.png",
-        )
+    def create_building(self, project, **overrides):
+        building_data = {
+            "project": project,
+            "code": "A",
+            "name": "Building A",
+            "status": "sales_open",
+            "handover": "Q4 2026",
+            "total_floors": 16,
+            "total_apartments": 80,
+            "price_from": Decimal("150000.00"),
+            "price_to": Decimal("300000.00"),
+            "cover_image_url": "https://example.com/building.png",
+        }
+        building_data.update(overrides)
+        return ProjectBuilding.objects.create(**building_data)
 
-    def create_apartment(self, building):
-        apartment = Apartment.objects.create(
-            building=building,
-            title="Two Bedroom Corner",
-            apartment_number="A-12-01",
-            description="Apartment description",
-            status=ApartmentAvailabilityStatus.AVAILABLE,
-            is_public=True,
-            price=Decimal("228000.00"),
-            currency="USD",
-            rooms=2,
-            size_sqm=Decimal("86.00"),
-            floor=12,
-            address="Sample address",
-            city=self.city,
-            district=self.district,
-            latitude=Decimal("41.311081"),
-            longitude=Decimal("69.240562"),
-        )
+    def create_apartment(self, building, **overrides):
+        apartment_data = {
+            "building": building,
+            "title": "Two Bedroom Corner",
+            "apartment_number": "A-12-01",
+            "description": "Apartment description",
+            "status": ApartmentAvailabilityStatus.AVAILABLE,
+            "is_public": True,
+            "price": Decimal("228000.00"),
+            "currency": "USD",
+            "rooms": 2,
+            "size_sqm": Decimal("86.00"),
+            "floor": 12,
+            "address": "Sample address",
+            "city": self.city,
+            "district": self.district,
+            "latitude": Decimal("41.311081"),
+            "longitude": Decimal("69.240562"),
+        }
+        apartment_data.update(overrides)
+        apartment = Apartment.objects.create(**apartment_data)
         apartment.images.create(
             image_url="https://example.com/apartment-1.png",
             is_primary=True,
@@ -298,6 +304,115 @@ class CatalogApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("floor", response.data)
+
+    def test_public_projects_filter_by_address_and_rooms(self):
+        company = self.create_company()
+        matching_project = self.create_project(
+            company,
+            name="Yunus Towers",
+            headline="North district launch",
+            address="Yunusabad Avenue 10",
+            location_label="Yunusabad Central",
+        )
+        matching_building = self.create_building(matching_project)
+        self.create_apartment(
+            matching_building,
+            apartment_number="A-01-01",
+            rooms=2,
+            address="Yunusabad Avenue 10",
+        )
+
+        non_matching_project = self.create_project(
+            company,
+            name="Riverside Lofts",
+            address="Chilonzor Boulevard 8",
+            location_label="Chilonzor South",
+        )
+        non_matching_building = self.create_building(non_matching_project, code="B", name="Building B")
+        self.create_apartment(
+            non_matching_building,
+            apartment_number="B-02-01",
+            rooms=3,
+            address="Chilonzor Boulevard 8",
+        )
+
+        response = self.client.get(
+            "/api/catalog/projects",
+            {
+                "address_query": "Yunusabad",
+                "rooms": "2",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["name"], "Yunus Towers")
+
+    def test_catalog_lookups_include_project_room_counts(self):
+        company = self.create_company()
+        first_project = self.create_project(company)
+        first_building = self.create_building(first_project)
+        self.create_apartment(first_building, apartment_number="A-01-01", rooms=1)
+
+        second_project = self.create_project(company, name="Skyline Court", address="Skyline Street")
+        second_building = self.create_building(second_project, code="C", name="Building C")
+        self.create_apartment(second_building, apartment_number="C-04-02", rooms=3)
+
+        response = self.client.get("/api/catalog/lookups")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["project_room_counts"], [1, 3])
+
+    def test_public_apartments_filter_by_address_rooms_price_and_delivery_year(self):
+        company = self.create_company()
+        matching_project = self.create_project(
+            company,
+            name="Garden Avenue",
+            address="Mirzo Ulugbek Avenue 14",
+            location_label="Mirzo Ulugbek",
+            delivery_window="Q2 2027",
+        )
+        matching_building = self.create_building(matching_project)
+        matching_apartment = self.create_apartment(
+            matching_building,
+            apartment_number="A-05-03",
+            title="Garden View Two Bedroom",
+            address="Mirzo Ulugbek Avenue 14",
+            rooms=2,
+            price=Decimal("210000.00"),
+        )
+
+        non_matching_project = self.create_project(
+            company,
+            name="River West",
+            address="Chilonzor Boulevard 8",
+            location_label="Chilonzor",
+            delivery_window="Q4 2028",
+        )
+        non_matching_building = self.create_building(non_matching_project, code="B", name="Building B")
+        self.create_apartment(
+            non_matching_building,
+            apartment_number="B-04-01",
+            title="River West Three Bedroom",
+            address="Chilonzor Boulevard 8",
+            rooms=3,
+            price=Decimal("320000.00"),
+        )
+
+        response = self.client.get(
+            "/api/catalog/apartments",
+            {
+                "address_query": "Mirzo",
+                "rooms": "2",
+                "min_price": "200000",
+                "max_price": "230000",
+                "delivery_year": "2027",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["id"], matching_apartment.id)
 
     def test_non_admin_cannot_write_catalog(self):
         response = self.client.post(

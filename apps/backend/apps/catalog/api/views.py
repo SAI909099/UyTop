@@ -1,10 +1,13 @@
+import re
 import os
 import uuid
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.contrib.gis.geos import Polygon
 from django.core.files.storage import default_storage
-from django.db.models import Count, Q
+from django.db.models import Count, Exists, F, IntegerField, Max, Min, OuterRef, Q
+from django.db.models.expressions import RawSQL
 from rest_framework import generics, status
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny
@@ -38,6 +41,8 @@ from .serializers import (
     ProjectSummarySerializer,
     ProjectWriteSerializer,
 )
+
+DELIVERY_YEAR_PATTERN = r"(19|20)\d{2}"
 
 
 def company_queryset():
@@ -158,12 +163,81 @@ class ProjectListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = project_queryset()
-        company_id = self.request.query_params.get("company")
+        params = self.request.query_params
+
+        company_id = params.get("company")
         if company_id:
             queryset = queryset.filter(company_id=company_id)
+
+        min_price = params.get("min_price")
+        if min_price:
+            try:
+                queryset = queryset.filter(starting_price__gte=Decimal(min_price))
+            except (InvalidOperation, TypeError):
+                pass
+
+        max_price = params.get("max_price")
+        if max_price:
+            try:
+                queryset = queryset.filter(starting_price__lte=Decimal(max_price))
+            except (InvalidOperation, TypeError):
+                pass
+
+        delivery_year = params.get("delivery_year")
+        if delivery_year and re.fullmatch(r"\d{4}", delivery_year):
+            queryset = queryset.filter(delivery_window__icontains=delivery_year)
+
+        address_query = (params.get("address_query") or "").strip()
+        if address_query:
+            queryset = queryset.filter(
+                Q(name__icontains=address_query)
+                | Q(headline__icontains=address_query)
+                | Q(address__icontains=address_query)
+                | Q(location_label__icontains=address_query)
+                | Q(city__name__icontains=address_query)
+                | Q(district__name__icontains=address_query)
+            )
+
+        room_values = sorted(
+            {
+                int(value)
+                for value in (params.get("rooms") or "").split(",")
+                if value.isdigit() and int(value) > 0
+            }
+        )
+        if room_values:
+            matching_apartments = Apartment.objects.filter(
+                building__project_id=OuterRef("pk"),
+                building__is_active=True,
+                is_public=True,
+                status__in=[
+                    ApartmentAvailabilityStatus.AVAILABLE,
+                    ApartmentAvailabilityStatus.RESERVED,
+                ],
+                rooms__in=room_values,
+            )
+            queryset = queryset.annotate(has_room_match=Exists(matching_apartments)).filter(has_room_match=True)
+
         if self.request.method == "GET":
-            return queryset.filter(is_active=True, company__is_active=True)
-        return queryset
+            queryset = queryset.filter(is_active=True, company__is_active=True)
+
+        sort = params.get("sort", "featured")
+        if sort == "price_asc":
+            return queryset.order_by("starting_price", "name")
+        if sort == "price_desc":
+            return queryset.order_by("-starting_price", "name")
+        if sort == "delivery_asc":
+            project_table = ResidentialProject._meta.db_table
+            queryset = queryset.annotate(
+                delivery_year_sort=RawSQL(
+                    f"CAST(NULLIF(SUBSTRING({project_table}.delivery_window FROM %s), '') AS INTEGER)",
+                    [DELIVERY_YEAR_PATTERN],
+                    output_field=IntegerField(),
+                )
+            )
+            return queryset.order_by(F("delivery_year_sort").asc(nulls_last=True), "-building_count", "-starting_price", "name")
+
+        return queryset.order_by("-building_count", "-starting_price", "name")
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -251,22 +325,75 @@ class ApartmentListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
             self.request.user.is_authenticated and getattr(self.request.user, "is_admin_role", False)
         )
         queryset = apartment_queryset(include_private=include_private)
+        params = self.request.query_params
 
-        building_id = self.request.query_params.get("building")
+        if not include_private:
+            queryset = queryset.filter(
+                building__is_active=True,
+                building__project__is_active=True,
+                building__project__company__is_active=True,
+            )
+
+        building_id = params.get("building")
         if building_id:
             queryset = queryset.filter(building_id=building_id)
-        project_id = self.request.query_params.get("project")
+        project_id = params.get("project")
         if project_id:
             queryset = queryset.filter(building__project_id=project_id)
-        company_id = self.request.query_params.get("company")
+        company_id = params.get("company")
         if company_id:
             queryset = queryset.filter(building__project__company_id=company_id)
-        city_id = self.request.query_params.get("city")
+        city_id = params.get("city")
         if city_id:
             queryset = queryset.filter(city_id=city_id)
-        district_id = self.request.query_params.get("district")
+        district_id = params.get("district")
         if district_id:
             queryset = queryset.filter(district_id=district_id)
+
+        min_price = params.get("min_price")
+        if min_price:
+            try:
+                queryset = queryset.filter(price__gte=Decimal(min_price))
+            except (InvalidOperation, TypeError):
+                pass
+
+        max_price = params.get("max_price")
+        if max_price:
+            try:
+                queryset = queryset.filter(price__lte=Decimal(max_price))
+            except (InvalidOperation, TypeError):
+                pass
+
+        delivery_year = params.get("delivery_year")
+        if delivery_year and re.fullmatch(r"\d{4}", delivery_year):
+            queryset = queryset.filter(building__project__delivery_window__icontains=delivery_year)
+
+        address_query = (params.get("address_query") or "").strip()
+        if address_query:
+            queryset = queryset.filter(
+                Q(title__icontains=address_query)
+                | Q(apartment_number__icontains=address_query)
+                | Q(address__icontains=address_query)
+                | Q(city__name__icontains=address_query)
+                | Q(district__name__icontains=address_query)
+                | Q(building__name__icontains=address_query)
+                | Q(building__project__name__icontains=address_query)
+                | Q(building__project__location_label__icontains=address_query)
+                | Q(building__project__address__icontains=address_query)
+            )
+
+        room_values = sorted(
+            {
+                int(value)
+                for value in (params.get("rooms") or "").split(",")
+                if value.isdigit() and int(value) > 0
+            }
+        )
+        if room_values:
+            queryset = queryset.filter(rooms__in=room_values)
+
+        if (params.get("random") or "").lower() in {"1", "true", "yes"}:
+            return queryset.order_by("?")
 
         return queryset.order_by("price", "building__name", "apartment_number")
 
@@ -341,18 +468,45 @@ class CatalogLookupsView(APIView):
         project_id = request.query_params.get("project")
         city_id = request.query_params.get("city")
 
+        active_projects = ResidentialProject.objects.filter(is_active=True, company__is_active=True)
         companies = DeveloperCompany.objects.filter(is_active=True).values("id", "name", "slug")
-        projects = ResidentialProject.objects.filter(is_active=True, company__is_active=True).values("id", "name", "slug", "company_id")
+        projects = active_projects.values("id", "name", "slug", "company_id")
         buildings = ProjectBuilding.objects.filter(is_active=True, project__is_active=True).values("id", "name", "slug", "project_id", "code")
         cities = LocationCity.objects.filter(is_active=True).values("id", "name", "slug")
         districts = LocationDistrict.objects.filter(is_active=True).values("id", "name", "slug", "city_id")
 
         if company_id:
             projects = projects.filter(company_id=company_id)
+            active_projects = active_projects.filter(company_id=company_id)
         if project_id:
             buildings = buildings.filter(project_id=project_id)
         if city_id:
             districts = districts.filter(city_id=city_id)
+
+        delivery_years = sorted(
+            {
+                int(match.group())
+                for delivery_window in active_projects.values_list("delivery_window", flat=True)
+                for match in re.finditer(DELIVERY_YEAR_PATTERN, delivery_window or "")
+            }
+        )
+        project_price_bounds = active_projects.aggregate(
+            min_price=Min("starting_price"),
+            max_price=Max("starting_price"),
+        )
+        project_room_counts = sorted(
+            Apartment.objects.filter(
+                building__project__in=active_projects,
+                building__is_active=True,
+                is_public=True,
+                status__in=[
+                    ApartmentAvailabilityStatus.AVAILABLE,
+                    ApartmentAvailabilityStatus.RESERVED,
+                ],
+            )
+            .values_list("rooms", flat=True)
+            .distinct()
+        )
 
         return Response(
             {
@@ -361,6 +515,12 @@ class CatalogLookupsView(APIView):
                 "buildings": list(buildings),
                 "cities": list(cities),
                 "districts": list(districts),
+                "project_delivery_years": delivery_years,
+                "project_price_bounds": {
+                    "min": float(project_price_bounds["min_price"] or 0),
+                    "max": float(project_price_bounds["max_price"] or 0),
+                },
+                "project_room_counts": project_room_counts,
                 "payment_options": [
                     {"value": value, "label": label}
                     for value, label in PaymentOptionType.choices
