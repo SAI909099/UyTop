@@ -383,6 +383,87 @@ p {
   align-content: start;
 }
 
+.home-map-launchpad,
+.home-map-preview-toolbar {
+  display: grid;
+  gap: 18px;
+  padding: 28px;
+  border-radius: 34px;
+}
+
+.home-map-launchpad {
+  min-height: 420px;
+  align-content: center;
+}
+
+.home-map-launchpad h2,
+.home-map-preview-copy h2 {
+  font-size: clamp(2.1rem, 4vw, 3.3rem);
+  line-height: 0.98;
+}
+
+.home-map-launchpad p,
+.home-map-preview-copy p {
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.home-map-launchpad-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.home-map-launchpad-metrics article {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.home-map-launchpad-metrics strong {
+  color: var(--gold-soft);
+  font-size: clamp(1.8rem, 4vw, 2.7rem);
+}
+
+.home-map-launchpad-metrics span {
+  color: rgba(247, 243, 236, 0.74);
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.home-map-launchpad-actions,
+.home-map-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.home-map-launchpad-loading,
+.home-map-launchpad-error {
+  min-height: 320px;
+}
+
+.home-map-preview-shell {
+  display: grid;
+  gap: 18px;
+}
+
+.home-map-preview-toolbar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px 24px;
+}
+
+.home-map-preview-copy {
+  display: grid;
+  gap: 12px;
+}
+
 .map-screen-page {
   min-height: 100svh;
 }
@@ -506,6 +587,43 @@ p {
   color: #09111d;
 }
 
+.home-map-location-feedback {
+  position: absolute;
+  top: 126px;
+  right: 24px;
+  z-index: 5;
+  display: grid;
+  gap: 6px;
+  width: min(320px, calc(100% - 48px));
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: rgba(6, 14, 24, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 38px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(16px);
+}
+
+.home-map-location-feedback strong {
+  color: var(--gold-soft);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.home-map-location-feedback p {
+  color: rgba(247, 243, 236, 0.82);
+  line-height: 1.6;
+}
+
+.home-map-location-feedback-success {
+  border-color: rgba(212, 175, 55, 0.24);
+}
+
+.home-map-location-feedback-error {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
 .home-map-controls {
   position: absolute;
   top: 24px;
@@ -537,6 +655,11 @@ p {
   border: 1px solid rgba(212, 175, 55, 0.2);
   box-shadow: 0 16px 32px rgba(0, 0, 0, 0.24);
   backdrop-filter: blur(16px);
+}
+
+.home-map-control-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 .home-map-control-button-wide {
@@ -893,12 +1016,10 @@ p {
 .home-map-cluster-marker {
   display: grid;
   place-items: center;
+  gap: 4px;
   width: 100%;
-  aspect-ratio: 1;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 30% 30%, rgba(242, 221, 176, 0.4), rgba(212, 175, 55, 0.1)),
-    rgba(8, 17, 30, 0.92);
+  min-height: 110px;
+  padding: 14px 16px;
   border: 1px solid rgba(212, 175, 55, 0.24);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   color: var(--text);
@@ -908,16 +1029,42 @@ p {
 }
 
 .home-map-cluster-marker strong {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   line-height: 1;
 }
 
 .home-map-cluster-marker small {
+  max-width: 12ch;
   color: rgba(247, 243, 236, 0.68);
-  font-size: 0.58rem;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.14em;
+  line-height: 1.2;
   text-transform: uppercase;
+}
+
+.home-map-cluster-marker span {
+  color: rgba(247, 243, 236, 0.78);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.home-map-cluster-marker-district {
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top left, rgba(242, 221, 176, 0.3), transparent 52%),
+    linear-gradient(180deg, rgba(17, 31, 51, 0.95), rgba(8, 17, 30, 0.98));
+}
+
+.home-map-cluster-marker-radius {
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(242, 221, 176, 0.4), rgba(212, 175, 55, 0.1)),
+    rgba(8, 17, 30, 0.92);
 }
 
 .home-map-cluster-marker-selected {
@@ -1657,6 +1804,27 @@ p {
   font-weight: 700;
 }
 
+.apartment-showcase-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  width: fit-content;
+  margin-top: 6px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  color: var(--gold-soft);
+  font-weight: 700;
+  transition: transform 0.24s ease, background 0.24s ease, border-color 0.24s ease;
+}
+
+.apartment-showcase-link:hover {
+  transform: translateY(-2px);
+  background: rgba(212, 175, 55, 0.16);
+}
+
 .apartment-showcase-empty {
   justify-items: start;
 }
@@ -2006,6 +2174,784 @@ p {
   font-weight: 700;
 }
 
+.project-hub-page,
+.developer-hub-page {
+  min-height: 100svh;
+}
+
+.project-hub-hero,
+.developer-hub-hero {
+  position: relative;
+  padding: 138px 0 48px;
+  overflow: hidden;
+}
+
+.project-hub-layer,
+.developer-hub-layer {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.project-hub-layer-one,
+.developer-hub-layer-one {
+  top: 88px;
+  right: -110px;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.18), transparent 72%);
+}
+
+.project-hub-layer-two,
+.developer-hub-layer-two {
+  bottom: -40px;
+  left: -130px;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, rgba(16, 35, 61, 0.44), transparent 72%);
+}
+
+.project-hub-hero-grid,
+.developer-hub-hero-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 0.84fr) minmax(360px, 1.16fr);
+  gap: 36px;
+  align-items: center;
+}
+
+.project-hub-copy,
+.developer-hub-copy {
+  display: grid;
+  gap: 24px;
+}
+
+.project-hub-lead,
+.developer-hub-lead,
+.developer-hub-results-copy,
+.developer-hub-card-note {
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.project-hub-lead,
+.developer-hub-lead {
+  max-width: 60ch;
+  font-size: 1.04rem;
+}
+
+.developer-hub-spotlight {
+  display: grid;
+  gap: 18px;
+  padding: 26px;
+  border-radius: 34px;
+}
+
+.developer-hub-spotlight h2 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.02;
+}
+
+.developer-hub-spotlight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.developer-hub-card-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.developer-hub-spotlight-grid article,
+.developer-hub-card-meta div {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.developer-hub-spotlight-grid span,
+.developer-hub-card-meta span,
+.developer-hub-search-shell span,
+.developer-hub-filter-label,
+.developer-hub-card-head span {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.developer-hub-spotlight-grid strong,
+.developer-hub-card-meta strong {
+  font-size: 1.2rem;
+}
+
+.project-hub-tools-section,
+.developer-hub-tools-section {
+  padding: 0 0 108px;
+}
+
+.project-hub-tools,
+.developer-hub-tools {
+  display: grid;
+  gap: 22px;
+  padding: 24px;
+  border-radius: 34px;
+}
+
+.project-hub-toolbar-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.project-hub-empty {
+  justify-items: start;
+}
+
+.developer-hub-search-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.developer-hub-search-shell span,
+.developer-hub-filter-label {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.developer-hub-search-input {
+  min-height: 58px;
+  padding: 0 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  outline: none;
+}
+
+.developer-hub-search-input::placeholder {
+  color: rgba(247, 243, 236, 0.46);
+}
+
+.developer-hub-search-input:focus {
+  border-color: rgba(212, 175, 55, 0.28);
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.08);
+}
+
+.developer-hub-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.developer-hub-filter-group {
+  display: grid;
+  gap: 10px;
+}
+
+.developer-hub-segment-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.developer-hub-segment-row-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(212, 175, 55, 0.32) rgba(255, 255, 255, 0.05);
+}
+
+.developer-hub-segment-row-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.developer-hub-segment-row-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+}
+
+.developer-hub-segment-row-scroll::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.32);
+  border-radius: 999px;
+}
+
+.developer-hub-segment,
+.developer-hub-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.24s ease, background 0.24s ease, border-color 0.24s ease, color 0.24s ease;
+}
+
+.developer-hub-segment:hover,
+.developer-hub-reset:hover {
+  transform: translateY(-1px);
+}
+
+.developer-hub-segment-active {
+  border-color: rgba(212, 175, 55, 0.28);
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--gold-soft);
+}
+
+.developer-hub-results-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 22px;
+  margin: 28px 0 22px;
+}
+
+.developer-hub-results-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.02;
+  margin-top: 12px;
+}
+
+.developer-hub-reset {
+  background: transparent;
+  border-color: rgba(212, 175, 55, 0.18);
+}
+
+.developer-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.developer-hub-card,
+.developer-hub-empty {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 30px;
+}
+
+.developer-hub-card-topline {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.developer-hub-card-mark {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(212, 175, 55, 0.22), rgba(212, 175, 55, 0.08));
+  color: var(--gold-soft);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.developer-hub-card-mark-logo {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.developer-hub-card-mark-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.developer-hub-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  width: 100%;
+}
+
+.developer-hub-card-head strong {
+  display: block;
+  font-size: 1.35rem;
+  line-height: 1.25;
+}
+
+.developer-hub-card-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.developer-hub-card-badge-verified {
+  color: var(--gold-soft);
+  border-color: rgba(212, 175, 55, 0.18);
+  background: rgba(212, 175, 55, 0.1);
+}
+
+.developer-hub-card-note {
+  min-height: 84px;
+}
+
+.developer-hub-empty {
+  justify-items: start;
+}
+
+.developer-hub-reset-inline {
+  min-height: 46px;
+}
+
+.building-detail-page-shell {
+  min-height: 100svh;
+}
+
+.building-detail-state-section {
+  display: grid;
+  align-content: center;
+  min-height: 100svh;
+  padding: 142px 0 92px;
+}
+
+.building-detail-state-card {
+  display: grid;
+  gap: 22px;
+  max-width: 760px;
+  padding: 36px;
+  border-radius: 32px;
+}
+
+.building-detail-state-card h1 {
+  font-size: clamp(2.8rem, 5vw, 4.8rem);
+  line-height: 0.95;
+}
+
+.building-detail-state-card p {
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.building-detail-hero {
+  position: relative;
+  padding: 138px 0 36px;
+  overflow: hidden;
+}
+
+.building-detail-hero-layer {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.building-detail-hero-layer-one {
+  top: 76px;
+  right: -120px;
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.16), transparent 72%);
+}
+
+.building-detail-hero-layer-two {
+  bottom: -80px;
+  left: -130px;
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, rgba(16, 35, 61, 0.44), transparent 72%);
+}
+
+.building-detail-hero-media {
+  position: relative;
+  min-height: 680px;
+  overflow: hidden;
+  border-radius: 38px;
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(212, 175, 55, 0.14), transparent 22%),
+    linear-gradient(180deg, rgba(12, 24, 41, 0.96), rgba(7, 14, 24, 1));
+  box-shadow: var(--shadow-hero);
+}
+
+.building-detail-hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.building-detail-hero-placeholder {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: rgba(247, 243, 236, 0.88);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 5rem;
+}
+
+.building-detail-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(6, 12, 22, 0.92) 0%, rgba(6, 12, 22, 0.5) 42%, rgba(6, 12, 22, 0.22) 100%),
+    linear-gradient(180deg, rgba(6, 12, 22, 0.12), rgba(6, 12, 22, 0.88));
+}
+
+.building-detail-hero-copy {
+  position: absolute;
+  left: 40px;
+  bottom: 40px;
+  z-index: 2;
+  display: grid;
+  gap: 20px;
+  max-width: min(580px, calc(100% - 80px));
+}
+
+.building-detail-hero-copy h1 {
+  max-width: 10ch;
+  font-size: clamp(3.6rem, 6vw, 6.4rem);
+  line-height: 0.94;
+}
+
+.building-detail-hero-lead {
+  max-width: 58ch;
+  color: rgba(247, 243, 236, 0.82);
+  font-size: 1.04rem;
+  line-height: 1.9;
+}
+
+.building-detail-hero-meta,
+.building-floor-signal-row,
+.building-detail-amenity-row,
+.building-unit-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.building-detail-hero-meta span,
+.building-floor-signal-row span,
+.building-unit-card-meta span,
+.building-units-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(8, 17, 30, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(247, 243, 236, 0.82);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(16px);
+}
+
+.building-detail-section {
+  padding: 0 0 108px;
+}
+
+.building-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.building-floor-explorer,
+.building-detail-sidebar {
+  display: grid;
+  gap: 20px;
+  padding: 28px;
+  border-radius: 32px;
+}
+
+.building-floor-explorer {
+  background:
+    radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(15, 26, 43, 0.9), rgba(8, 17, 30, 0.96));
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(20px);
+}
+
+.building-floor-explorer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.building-floor-explorer-title,
+.building-detail-sidebar-title,
+.building-units-head h3 {
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 1.04;
+}
+
+.building-floor-explorer-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  color: var(--gold-soft);
+  font-weight: 700;
+}
+
+.building-floor-slider-shell,
+.building-diagram-panel,
+.building-units-shell {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.building-floor-slider-head,
+.building-diagram-head,
+.building-units-head,
+.building-unit-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.building-floor-slider-head span,
+.building-diagram-head span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.building-floor-slider-head strong,
+.building-diagram-head strong {
+  color: var(--gold-soft);
+}
+
+.building-floor-slider {
+  width: 100%;
+  accent-color: var(--gold);
+}
+
+.building-floor-slider-scale {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.building-diagram-canvas {
+  position: relative;
+  min-height: 360px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(4, 9, 18, 0.98), rgba(7, 14, 24, 1));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.building-diagram-gridline {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+}
+
+.building-diagram-gridline-vertical {
+  background-image: linear-gradient(90deg, transparent 24%, rgba(255, 255, 255, 0.3) 24.2%, transparent 24.4%);
+}
+
+.building-diagram-gridline-horizontal {
+  background-image:
+    linear-gradient(180deg, transparent 18%, rgba(255, 255, 255, 0.26) 18.2%, transparent 18.4%),
+    linear-gradient(180deg, transparent 38%, rgba(255, 255, 255, 0.22) 38.2%, transparent 38.4%),
+    linear-gradient(180deg, transparent 58%, rgba(255, 255, 255, 0.2) 58.2%, transparent 58.4%),
+    linear-gradient(180deg, transparent 78%, rgba(255, 255, 255, 0.18) 78.2%, transparent 78.4%);
+}
+
+.building-diagram-stack {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 10px;
+  padding: 28px 24px 104px;
+}
+
+.building-diagram-floor {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 14px;
+  align-items: center;
+}
+
+.building-diagram-floor-label {
+  color: rgba(247, 243, 236, 0.7);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.building-diagram-floor-plan {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.building-diagram-floor-plan span {
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.building-diagram-floor-active .building-diagram-floor-label {
+  color: var(--gold-soft);
+}
+
+.building-diagram-floor-active .building-diagram-floor-plan span {
+  border-color: rgba(242, 221, 176, 0.82);
+  background: rgba(212, 175, 55, 0.12);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.1);
+}
+
+.building-diagram-caption {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  left: 20px;
+  z-index: 1;
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.building-diagram-caption p,
+.building-diagram-caption span,
+.building-unit-card p,
+.building-units-empty p {
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.building-diagram-caption span {
+  font-size: 0.82rem;
+}
+
+.building-units-shell {
+  scroll-margin-top: 120px;
+}
+
+.building-units-head {
+  align-items: flex-end;
+}
+
+.building-units-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.building-unit-card,
+.building-units-empty {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.building-unit-card-head span {
+  color: var(--gold-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.building-unit-card-price {
+  font-size: 1.2rem;
+}
+
+.building-detail-sidebar {
+  position: sticky;
+  top: 104px;
+  align-self: start;
+}
+
+.building-detail-sidebar-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.building-detail-sidebar-grid div {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.building-detail-sidebar-grid span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.building-detail-sidebar-grid strong {
+  line-height: 1.5;
+}
+
+.building-detail-amenity-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.building-detail-amenity-icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e0bf66 0%, #c59d30 100%);
+}
+
+.building-detail-sidebar-actions {
+  display: grid;
+  gap: 12px;
+}
+
 .developer-brand {
   display: flex;
   align-items: center;
@@ -2069,6 +3015,865 @@ p {
 
 .leaflet-control-attribution a {
   color: rgba(242, 221, 176, 0.88) !important;
+}
+
+.home-map-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.apartment-detail-page-shell {
+  min-height: 100svh;
+}
+
+.apartment-detail-state-section {
+  display: grid;
+  align-content: center;
+  min-height: 100svh;
+  padding: 142px 0 92px;
+}
+
+.apartment-detail-state-card {
+  display: grid;
+  gap: 22px;
+  max-width: 720px;
+  padding: 36px;
+}
+
+.apartment-detail-state-card h1 {
+  font-size: clamp(2.8rem, 5vw, 4.8rem);
+  line-height: 0.95;
+}
+
+.apartment-detail-state-card p {
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.apartment-detail-hero {
+  position: relative;
+  padding: 138px 0 52px;
+  overflow: hidden;
+}
+
+.apartment-detail-hero-layer {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.apartment-detail-hero-layer-one {
+  top: 84px;
+  right: -90px;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.18), transparent 70%);
+}
+
+.apartment-detail-hero-layer-two {
+  bottom: -60px;
+  left: -140px;
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, rgba(16, 35, 61, 0.46), transparent 72%);
+}
+
+.apartment-detail-hero-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 0.86fr) minmax(380px, 1.14fr);
+  gap: 36px;
+  align-items: center;
+}
+
+.apartment-detail-copy {
+  display: grid;
+  gap: 24px;
+}
+
+.apartment-detail-breadcrumbs,
+.apartment-detail-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.apartment-detail-breadcrumbs span,
+.apartment-detail-tag-row span,
+.apartment-detail-gallery-topline span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(8, 17, 30, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(247, 243, 236, 0.82);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(16px);
+}
+
+.apartment-detail-title-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.apartment-detail-title-stack h1 {
+  max-width: 10ch;
+  font-size: clamp(3.6rem, 6vw, 6.2rem);
+  line-height: 0.94;
+}
+
+.apartment-detail-price-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 54px;
+  padding: 0 22px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e0bf66 0%, #c59d30 100%);
+  color: #09111d;
+  font-size: 1.05rem;
+  font-weight: 800;
+  box-shadow: 0 18px 44px rgba(212, 175, 55, 0.24);
+}
+
+.apartment-detail-lead {
+  max-width: 62ch;
+  color: var(--text-muted);
+  font-size: 1.04rem;
+  line-height: 1.9;
+}
+
+.apartment-detail-gallery,
+.apartment-detail-story-card,
+.apartment-detail-payment-card,
+.apartment-detail-location-copy,
+.apartment-detail-map-card {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+  border-radius: 32px;
+}
+
+.apartment-detail-gallery-lead {
+  position: relative;
+  min-height: 560px;
+  overflow: hidden;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(212, 175, 55, 0.16), transparent 22%),
+    linear-gradient(180deg, rgba(14, 33, 56, 0.96), rgba(8, 17, 30, 1));
+}
+
+.apartment-detail-gallery-lead img,
+.apartment-detail-gallery-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.apartment-detail-gallery-placeholder {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: rgba(247, 243, 236, 0.88);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 4rem;
+}
+
+.apartment-detail-gallery-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 17, 30, 0.04), rgba(8, 17, 30, 0.9));
+}
+
+.apartment-detail-gallery-topline {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  left: 20px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.apartment-detail-gallery-caption {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  left: 20px;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+}
+
+.apartment-detail-gallery-caption strong {
+  font-size: 1.4rem;
+}
+
+.apartment-detail-gallery-caption span {
+  color: rgba(247, 243, 236, 0.74);
+}
+
+.apartment-detail-gallery-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.apartment-detail-gallery-thumb {
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.apartment-detail-snapshot-strip {
+  padding: 0 0 48px;
+}
+
+.apartment-detail-snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.apartment-detail-snapshot-card {
+  display: grid;
+  gap: 8px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.apartment-detail-snapshot-card span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.apartment-detail-snapshot-card strong {
+  font-size: 1.2rem;
+  line-height: 1.35;
+}
+
+.apartment-detail-content-section {
+  padding: 0 0 40px;
+}
+
+.apartment-detail-content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.apartment-detail-section-title {
+  font-size: clamp(2rem, 3.2vw, 3.2rem);
+  line-height: 1.04;
+}
+
+.apartment-detail-identity-grid,
+.apartment-detail-location-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.apartment-detail-identity-grid div,
+.apartment-detail-location-meta div,
+.apartment-detail-payment-item {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.apartment-detail-identity-grid span,
+.apartment-detail-location-meta span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.apartment-detail-identity-grid strong,
+.apartment-detail-location-meta strong {
+  line-height: 1.6;
+}
+
+.apartment-detail-payment-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.apartment-detail-payment-item strong {
+  color: var(--gold-soft);
+  font-size: 1rem;
+}
+
+.apartment-detail-payment-item p {
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.apartment-detail-empty-state {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.apartment-detail-empty-state h3 {
+  font-size: 1.2rem;
+}
+
+.apartment-detail-empty-state p {
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.apartment-detail-location-section {
+  padding: 0 0 92px;
+}
+
+.apartment-detail-location-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.18fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.apartment-location-map-shell {
+  position: relative;
+  min-height: 420px;
+  overflow: hidden;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(212, 175, 55, 0.16), transparent 22%),
+    linear-gradient(180deg, rgba(14, 33, 56, 0.94), rgba(8, 17, 30, 1));
+}
+
+.apartment-location-map-canvas,
+.apartment-location-map-fallback {
+  width: 100%;
+  min-height: 420px;
+}
+
+.apartment-location-map-canvas {
+  position: relative;
+  z-index: 1;
+}
+
+.apartment-location-map-caption {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  left: 18px;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(8, 17, 30, 0.82);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  backdrop-filter: blur(16px);
+}
+
+.apartment-location-map-caption strong {
+  font-size: 1rem;
+}
+
+.apartment-location-map-caption span,
+.apartment-location-map-fallback span {
+  color: var(--text-muted);
+}
+
+.apartment-location-map-fallback {
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+
+.apartment-location-map-fallback p {
+  line-height: 1.7;
+}
+
+.apartment-location-marker-shell {
+  background: transparent;
+  border: 0;
+}
+
+.apartment-location-marker {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(242, 221, 176, 0.34), rgba(212, 175, 55, 0.12)),
+    rgba(8, 17, 30, 0.92);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.34);
+}
+
+.apartment-location-marker span {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e0bf66 0%, #c59d30 100%);
+  color: #09111d;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.apartment-detail-cta-section {
+  padding-top: 0;
+}
+
+.compare-page-shell {
+  min-height: 100vh;
+}
+
+.compare-matrix-hero,
+.compare-state-section {
+  position: relative;
+  padding: 148px 0 44px;
+}
+
+.compare-matrix-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.compare-matrix-layer-one {
+  background:
+    radial-gradient(circle at 18% 24%, rgba(212, 175, 55, 0.14), transparent 32%),
+    radial-gradient(circle at 82% 18%, rgba(27, 53, 88, 0.42), transparent 28%);
+}
+
+.compare-matrix-layer-two {
+  opacity: 0.72;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 120px 120px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), transparent 92%);
+}
+
+.compare-matrix-hero-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.86fr);
+  gap: 28px;
+  align-items: end;
+}
+
+.compare-matrix-copy {
+  display: grid;
+  gap: 22px;
+}
+
+.compare-matrix-copy h1,
+.compare-state-card h1 {
+  max-width: 12ch;
+  font-size: clamp(3.4rem, 5.2vw, 5.5rem);
+  line-height: 0.95;
+}
+
+.compare-matrix-lead,
+.compare-state-card p {
+  max-width: 62ch;
+  color: var(--text-muted);
+  line-height: 1.82;
+}
+
+.compare-matrix-spotlight,
+.compare-matrix-toolbar,
+.compare-matrix-shell,
+.compare-state-card {
+  padding: 28px;
+  border-radius: 34px;
+}
+
+.compare-matrix-spotlight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.compare-matrix-spotlight-grid div {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.compare-matrix-spotlight-grid span,
+.compare-state-notes span {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.compare-matrix-spotlight-grid strong {
+  font-size: 1.2rem;
+  line-height: 1.25;
+}
+
+.compare-matrix-section {
+  padding: 0 0 112px;
+}
+
+.compare-matrix-toolbar {
+  display: grid;
+  gap: 22px;
+}
+
+.compare-matrix-toolbar-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.compare-matrix-toolbar-head h2 {
+  font-size: clamp(1.7rem, 3.2vw, 2.7rem);
+  line-height: 1.04;
+}
+
+.compare-matrix-sort-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.compare-matrix-sort-button {
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.24s ease, border-color 0.24s ease, color 0.24s ease, transform 0.24s ease;
+}
+
+.compare-matrix-sort-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(212, 175, 55, 0.26);
+  color: var(--text);
+}
+
+.compare-matrix-sort-button.is-active {
+  background: rgba(212, 175, 55, 0.14);
+  border-color: rgba(212, 175, 55, 0.3);
+  color: var(--gold-soft);
+}
+
+.compare-matrix-note-list,
+.compare-state-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.compare-matrix-note,
+.compare-state-notes span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.compare-matrix-shell {
+  margin-top: 24px;
+  overflow: hidden;
+}
+
+.compare-matrix-scroll {
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.compare-matrix-grid {
+  display: grid;
+  gap: 1px;
+  min-width: max-content;
+  border-radius: 28px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.compare-matrix-corner,
+.compare-matrix-column-head,
+.compare-matrix-row-label,
+.compare-matrix-cell {
+  background:
+    linear-gradient(180deg, rgba(12, 23, 38, 0.94), rgba(7, 15, 27, 0.98));
+}
+
+.compare-matrix-corner,
+.compare-matrix-row-label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.compare-matrix-corner,
+.compare-matrix-row-label,
+.compare-matrix-cell {
+  padding: 20px 18px;
+}
+
+.compare-matrix-corner {
+  display: grid;
+  gap: 10px;
+  min-height: 100%;
+  align-content: end;
+}
+
+.compare-matrix-corner span,
+.compare-matrix-row-label span,
+.compare-matrix-column-copy span {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.compare-matrix-corner strong,
+.compare-matrix-row-label strong {
+  font-size: 1.02rem;
+}
+
+.compare-matrix-column-head {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  padding: 18px;
+}
+
+.compare-matrix-column-head.is-best-value,
+.compare-matrix-cell.is-best-value {
+  background:
+    radial-gradient(circle at top right, rgba(212, 175, 55, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(22, 27, 21, 0.98), rgba(12, 19, 21, 0.98));
+}
+
+.compare-matrix-column-media,
+.compare-matrix-column-placeholder {
+  min-height: 148px;
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.compare-matrix-column-media {
+  position: relative;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.compare-matrix-column-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.compare-matrix-column-placeholder {
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 24% 18%, rgba(212, 175, 55, 0.28), transparent 34%),
+    linear-gradient(160deg, rgba(17, 34, 55, 0.98), rgba(6, 12, 22, 0.98));
+  color: var(--gold-soft);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.compare-matrix-column-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.compare-matrix-column-copy h3 {
+  font-size: 1.5rem;
+  line-height: 1.08;
+}
+
+.compare-matrix-column-copy p {
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.compare-matrix-column-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.compare-matrix-column-tags span,
+.compare-matrix-best-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.compare-matrix-best-pill {
+  background: rgba(212, 175, 55, 0.14);
+  border-color: rgba(212, 175, 55, 0.24);
+  color: var(--gold-soft);
+}
+
+.compare-matrix-column-actions {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.compare-matrix-column-actions .button {
+  width: 100%;
+}
+
+.compare-matrix-row-label {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+}
+
+.compare-matrix-cell {
+  display: grid;
+  align-content: center;
+  min-height: 88px;
+}
+
+.compare-matrix-cell span {
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.compare-matrix-cell-emphasis {
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+.compare-state-card {
+  display: grid;
+  gap: 24px;
+  justify-items: start;
+}
+
+.residences-tools {
+  gap: 28px;
+}
+
+.residences-search-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+}
+
+.residences-search-form .developer-hub-search-shell {
+  flex: 1 1 340px;
+}
+
+.residences-search-submit {
+  min-height: 58px;
+}
+
+.residence-card {
+  display: grid;
+}
+
+.residence-card-media {
+  min-height: 250px;
+}
+
+.residence-card-status {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+}
+
+.residence-card-status span,
+.residence-card-context span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(6, 12, 22, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(247, 243, 236, 0.92);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(14px);
+}
+
+.residence-card-body > strong {
+  color: var(--gold);
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.residence-card-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.residences-empty {
+  justify-items: start;
+}
+
+.residences-page-button-disabled {
+  opacity: 0.42;
+  cursor: default;
+  pointer-events: none;
 }
 
 @keyframes pulse {
@@ -2146,9 +3951,12 @@ p {
 
 @media (max-width: 1180px) {
   .hero-grid,
+  .apartment-detail-snapshot-grid,
   .section-grid-story,
   .project-grid,
   .apartment-showcase-grid,
+  .building-units-grid,
+  .developer-hub-grid,
   .developer-grid,
   .capability-grid,
   .hero-metrics,
@@ -2162,8 +3970,53 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .apartment-detail-hero-grid,
+  .apartment-detail-content-grid,
+  .apartment-detail-location-grid,
+  .building-detail-layout,
+  .compare-matrix-hero-grid,
+  .project-hub-hero-grid,
+  .project-hub-toolbar-grid,
+  .developer-hub-hero-grid,
+  .developer-hub-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .apartment-detail-title-stack h1 {
+    max-width: 12ch;
+  }
+
+  .apartment-detail-gallery-lead {
+    min-height: 480px;
+  }
+
+  .building-detail-sidebar {
+    position: static;
+  }
+
+  .building-detail-hero-media {
+    min-height: 620px;
+  }
+
+  .compare-matrix-toolbar-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .compare-matrix-sort-group {
+    justify-content: flex-start;
+  }
+
+  .developer-hub-card-meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .hero-visual {
     min-height: auto;
+  }
+
+  .home-map-preview-toolbar {
+    grid-template-columns: 1fr;
   }
 
   .floating-spotlight-card {
@@ -2196,6 +4049,11 @@ p {
   .home-map-detail-panel {
     width: min(372px, calc(100% - 24px));
   }
+
+  .residences-search-form {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+  }
 }
 
 @media (max-width: 820px) {
@@ -2221,13 +4079,92 @@ p {
     padding-top: 156px;
   }
 
+  .apartment-detail-hero,
+  .apartment-detail-state-section,
+  .compare-matrix-hero,
+  .compare-state-section,
+  .project-hub-hero,
+  .developer-hub-hero,
+  .building-detail-hero,
+  .building-detail-state-section {
+    padding-top: 156px;
+  }
+
   .hero-copy h1 {
     font-size: 3.2rem;
+  }
+
+  .apartment-detail-title-stack h1,
+  .apartment-detail-state-card h1,
+  .compare-matrix-copy h1,
+  .compare-state-card h1,
+  .project-hub-copy h1,
+  .building-detail-hero-copy h1,
+  .building-detail-state-card h1 {
+    font-size: 3.1rem;
+  }
+
+  .apartment-detail-gallery,
+  .apartment-detail-story-card,
+  .apartment-detail-payment-card,
+  .apartment-detail-location-copy,
+  .apartment-detail-map-card,
+  .apartment-detail-state-card,
+  .compare-matrix-spotlight,
+  .compare-matrix-toolbar,
+  .compare-matrix-shell,
+  .compare-state-card,
+  .project-hub-tools,
+  .project-hub-empty,
+  .building-floor-explorer,
+  .building-detail-sidebar,
+  .building-detail-state-card,
+  .developer-hub-spotlight,
+  .developer-hub-tools,
+  .developer-hub-card,
+  .developer-hub-empty {
+    padding: 22px;
+    border-radius: 28px;
+  }
+
+  .apartment-detail-gallery-lead,
+  .apartment-location-map-shell,
+  .apartment-location-map-canvas,
+  .apartment-location-map-fallback,
+  .building-detail-hero-media {
+    min-height: 320px;
+  }
+
+  .building-detail-hero-media {
+    min-height: 460px;
+  }
+
+  .apartment-detail-gallery-strip,
+  .apartment-detail-identity-grid,
+  .apartment-detail-location-meta,
+  .compare-matrix-spotlight-grid,
+  .project-hub-toolbar-grid,
+  .building-detail-sidebar-grid,
+  .building-units-grid,
+  .developer-hub-spotlight-grid,
+  .developer-hub-card-meta,
+  .developer-hub-grid {
+    grid-template-columns: 1fr;
   }
 
   .developer-logo-marquee {
     gap: 14px;
     padding: 16px;
+  }
+
+  .home-map-launchpad,
+  .home-map-preview-toolbar {
+    padding: 22px;
+    border-radius: 28px;
+  }
+
+  .home-map-launchpad-metrics {
+    grid-template-columns: 1fr;
   }
 
   .developer-logo-marquee-item {
@@ -2285,6 +4222,16 @@ p {
     margin-left: 0;
   }
 
+  .residences-search-form {
+    grid-template-columns: 1fr;
+  }
+
+  .residences-search-submit,
+  .residences-search-form .button {
+    width: 100%;
+    justify-content: center;
+  }
+
   .project-filter-results-copy {
     flex-wrap: wrap;
   }
@@ -2293,6 +4240,7 @@ p {
   .stats-strip-grid,
   .capability-grid,
   .project-grid,
+  .apartment-detail-snapshot-grid,
   .apartment-showcase-grid,
   .developer-grid,
   .project-meta-grid,
@@ -2307,6 +4255,40 @@ p {
   .apartment-showcase-topline {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .apartment-showcase-link {
+    width: 100%;
+  }
+
+  .developer-hub-results-head,
+  .developer-hub-card-head,
+  .compare-matrix-toolbar-head,
+  .building-floor-explorer-head,
+  .building-units-head,
+  .building-detail-sidebar-actions {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .developer-hub-card-topline {
+    align-items: flex-start;
+  }
+
+  .building-detail-hero-copy {
+    right: 24px;
+    left: 24px;
+    bottom: 24px;
+    max-width: calc(100% - 48px);
+  }
+
+  .compare-matrix-grid {
+    border-radius: 24px;
+  }
+
+  .compare-matrix-corner,
+  .compare-matrix-row-label {
+    min-width: 180px;
   }
 
   .home-map-stage,
@@ -2333,6 +4315,13 @@ p {
     max-width: calc(100% - 32px);
   }
 
+  .home-map-location-feedback {
+    top: 122px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+
   .home-map-controls {
     top: 16px;
     right: 16px;
@@ -2351,7 +4340,8 @@ p {
 
   .home-map-selected-actions,
   .home-map-detail-feedback-error,
-  .home-map-detail-header {
+  .home-map-detail-header,
+  .home-map-detail-actions {
     display: grid;
     justify-content: stretch;
   }

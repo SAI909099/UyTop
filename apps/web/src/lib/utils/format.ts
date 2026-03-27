@@ -35,3 +35,11 @@ export function formatCompactCurrency(value: string | number, currency = 'USD') 
 export function formatRooms(value: number) {
   return value === 1 ? '1 room' : `${value} rooms`;
 }
+
+export function formatLabel(value: string) {
+  return value
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ');
+}

@@ -15,3 +15,11 @@
 - [x] Updated repo docs to reflect the restored public web app
 - [x] Verified `npm run build` passes in `apps/web`
 - [x] Verified `npm run build` still passes in `apps/admin`
+
+## Homepage Map Optimization
+- [x] Moved the homepage map experience to an explicit on-demand reveal instead of mounting it on first load
+- [x] Added homepage CTA entry points for `Show map` and `Turn on location`
+- [x] Reused the dedicated `/map` page as the full live-map experience with a `Near me` control
+- [x] Added inline browser geolocation feedback and user-location highlighting on the full map page
+- [x] Routed browser-side public catalog fetches through a same-origin Next proxy so homepage map preview no longer falls back to false empty state
+- [x] Added district-aware far zoom counts, 2-3 km nearby grouping at mid zoom, and preserved exact home markers at close zoom

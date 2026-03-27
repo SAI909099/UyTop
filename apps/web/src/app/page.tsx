@@ -1,6 +1,6 @@
 import { DeveloperBrandRail } from '@/components/home/developer-brand-rail';
 import { DeveloperLogoMarquee } from '@/components/home/developer-logo-marquee';
-import { HomeLiveMap } from '@/components/home/home-live-map';
+import { HomeHeroMapExperience } from '@/components/home/home-hero-map-experience';
 import { HomePrimaryNav } from '@/components/home/home-nav';
 import { ProjectFilterPanel } from '@/components/home/project-filter-panel';
 import { getHomepageData } from '@/lib/api/public';
@@ -52,14 +52,12 @@ export default async function HomePage() {
     projectRoomCounts,
     showcaseApartments,
     showcaseApartmentsCount,
-    mapApartments,
-    mapApartmentsCount,
   } = await getHomepageData();
 
   const sortedCompanies = sortCompanies(companies);
   const sortedProjects = sortProjects(projects);
   const marqueeCompanies = sortedCompanies.filter((company) => company.logo_url?.trim());
-  const totalPublishedApartments = mapApartmentsCount;
+  const totalPublishedApartments = showcaseApartmentsCount;
   const averageProjectEntry =
     sortedProjects.length > 0
       ? Math.round(sortedProjects.reduce((sum, project) => sum + numeric(project.starting_price), 0) / sortedProjects.length)
@@ -92,14 +90,14 @@ export default async function HomePage() {
             </p>
 
             <div className="hero-actions">
-              <a href="/map" className="button button-primary">
-                Open live map
+              <a href="#map-launchpad" className="button button-primary">
+                See map
               </a>
-              <a href="#projects" className="button button-secondary">
+              <a href="/map?locate=1" className="button button-secondary">
+                Turn on location
+              </a>
+              <a href="/projects" className="button button-ghost">
                 Featured projects
-              </a>
-              <a href="#developers" className="button button-ghost">
-                Verified developers
               </a>
             </div>
 
@@ -112,7 +110,7 @@ export default async function HomePage() {
               <article className="metric-card">
                 <p>Visible residences</p>
                 <strong>{formatCompactNumber(totalPublishedApartments)}</strong>
-                <span>Public apartments currently available to inspect through the live map, not a static promo showcase.</span>
+                <span>Published homes currently visible in the public inventory, ready to open on the map when needed.</span>
               </article>
               <article className="metric-card">
                 <p>Average launch entry</p>
@@ -122,8 +120,8 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="hero-visual" id="map">
-            <HomeLiveMap items={mapApartments} variant="preview" />
+          <div className="hero-visual">
+            <HomeHeroMapExperience totalHomes={totalPublishedApartments} liveCities={liveCities} />
             <DeveloperLogoMarquee companies={marqueeCompanies} />
           </div>
         </div>
@@ -141,7 +139,7 @@ export default async function HomePage() {
           </article>
           <article className="stats-strip-item">
             <strong>{formatCompactNumber(totalPublishedApartments)}</strong>
-            <span>Map apartments</span>
+            <span>Published residences</span>
           </article>
           <article className="stats-strip-item">
             <strong>{formatCompactNumber(liveCities)}</strong>
@@ -172,6 +170,12 @@ export default async function HomePage() {
                 separated from inventory.
               </p>
             </div>
+
+            {sortedCompanies.length ? (
+              <a href="/developers" className="button button-secondary">
+                Open developer hub
+              </a>
+            ) : null}
           </div>
 
           <div className="developer-brand-rail-wrap">
@@ -197,10 +201,10 @@ export default async function HomePage() {
             a larger public experience when you restore more routes.
           </p>
           <div className="cta-actions">
-            <a href="#map" className="button button-primary">
+            <a href="#map-launchpad" className="button button-primary">
               Back to map
             </a>
-            <a href="#projects" className="button button-secondary">
+            <a href="/projects" className="button button-secondary">
               Review projects
             </a>
           </div>

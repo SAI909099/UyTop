@@ -4,7 +4,7 @@ type HomePrimaryNavProps = {
 };
 
 export function HomePrimaryNav({
-  ctaHref = "/#projects",
+  ctaHref = "/projects",
   ctaLabel = "Explore launches",
 }: HomePrimaryNavProps) {
   return (
@@ -20,9 +20,9 @@ export function HomePrimaryNav({
 
         <div className="home-nav-links">
           <a href="/map">Live map</a>
-          <a href="/#projects">Projects</a>
-          <a href="/#developers">Developers</a>
-          <a href="/#residences">Residences</a>
+          <a href="/projects">Projects</a>
+          <a href="/developers">Developers</a>
+          <a href="/residences">Residences</a>
         </div>
 
         <a href={ctaHref} className="button button-primary">

@@ -31,6 +31,23 @@ export type PublicCompany = {
   apartment_count: number;
 };
 
+export type PublicCompanyQuery = {
+  page?: number;
+  pageSize?: number;
+};
+
+export type PublicCompanyDetail = PublicCompany & {
+  description: string;
+  founded_year: number | null;
+  is_active: boolean;
+  projects: PublicProject[];
+};
+
+export type DeveloperHubCompany = PublicCompany & {
+  founded_year: number | null;
+  experience_years: number | null;
+};
+
 export type PublicProject = {
   id: number;
   company: number;
@@ -48,6 +65,29 @@ export type PublicProject = {
   building_count: number;
 };
 
+export type PublicBuildingSummary = {
+  id: number;
+  project: number;
+  code: string;
+  name: string;
+  slug: string;
+  status: string;
+  handover: string;
+  summary: string;
+  total_floors: number | null;
+  total_apartments: number | null;
+  price_from: string;
+  price_to: string;
+  cover_image_url: string;
+  apartments_left: number;
+};
+
+export type PublicBuildingDetail = Omit<PublicBuildingSummary, 'project'> & {
+  is_active: boolean;
+  project: PublicProject;
+  apartments: PublicApartmentSummary[];
+};
+
 export type PublicProjectSort = 'featured' | 'price_asc' | 'price_desc' | 'delivery_asc';
 
 export type PublicProjectQuery = {
@@ -62,16 +102,25 @@ export type PublicProjectQuery = {
   pageSize?: number;
 };
 
+export type PublicBuildingQuery = {
+  project?: number;
+  page?: number;
+  pageSize?: number;
+};
+
 export type PublicApartmentQuery = {
   minPrice?: number;
   maxPrice?: number;
   deliveryYear?: number | null;
   addressQuery?: string;
   rooms?: number[];
+  sort?: PublicApartmentSort;
   page?: number;
   pageSize?: number;
   random?: boolean;
 };
+
+export type PublicApartmentSort = 'newest' | 'price_asc' | 'price_desc';
 
 export type PublicCatalogLookups = {
   project_delivery_years: number[];
@@ -100,6 +149,8 @@ export type PublicMapApartment = {
   currency: string;
   latitude: string;
   longitude: string;
+  city: LocationRef;
+  district: LocationRef | null;
   rooms: number;
   size_sqm: string;
   status: string;
@@ -152,6 +203,4 @@ export type HomepageData = {
   projectRoomCounts: number[];
   showcaseApartments: PublicApartmentSummary[];
   showcaseApartmentsCount: number;
-  mapApartments: PublicMapApartment[];
-  mapApartmentsCount: number;
 };

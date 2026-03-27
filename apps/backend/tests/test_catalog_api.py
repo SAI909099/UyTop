@@ -1,5 +1,7 @@
+from datetime import timedelta
 from decimal import Decimal
 
+from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -242,6 +244,8 @@ class CatalogApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["company_name"], "Dream House")
+        self.assertEqual(response.data["results"][0]["city"]["name"], "Tashkent")
+        self.assertEqual(response.data["results"][0]["district"]["name"], "Yunusabad")
         self.assertEqual(response.data["results"][0]["payment_options"][0]["payment_type"], PaymentOptionType.CASH)
 
     def test_public_map_returns_empty_payment_options_when_none_exist(self):
@@ -381,6 +385,14 @@ class CatalogApiTests(APITestCase):
             rooms=2,
             price=Decimal("210000.00"),
         )
+        second_matching_apartment = self.create_apartment(
+            matching_building,
+            apartment_number="A-07-01",
+            title="Garden View Premium Two Bedroom",
+            address="Mirzo Ulugbek Avenue 14",
+            rooms=2,
+            price=Decimal("220000.00"),
+        )
 
         non_matching_project = self.create_project(
             company,
@@ -407,12 +419,58 @@ class CatalogApiTests(APITestCase):
                 "min_price": "200000",
                 "max_price": "230000",
                 "delivery_year": "2027",
+                "sort": "price_desc",
             },
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["count"], 1)
-        self.assertEqual(response.data["results"][0]["id"], matching_apartment.id)
+        self.assertEqual(response.data["count"], 2)
+        self.assertEqual(
+            [item["id"] for item in response.data["results"]],
+            [second_matching_apartment.id, matching_apartment.id],
+        )
+
+    def test_public_apartments_support_sorting(self):
+        company = self.create_company()
+        project = self.create_project(company, name="Sorting Residences")
+        building = self.create_building(project)
+
+        oldest_apartment = self.create_apartment(
+            building,
+            apartment_number="A-01-01",
+            title="Oldest Residence",
+            price=Decimal("320000.00"),
+        )
+        middle_apartment = self.create_apartment(
+            building,
+            apartment_number="A-01-02",
+            title="Middle Residence",
+            price=Decimal("210000.00"),
+        )
+        newest_apartment = self.create_apartment(
+            building,
+            apartment_number="A-01-03",
+            title="Newest Residence",
+            price=Decimal("145000.00"),
+        )
+
+        base_time = timezone.now()
+        Apartment.objects.filter(pk=oldest_apartment.pk).update(created_at=base_time - timedelta(days=2))
+        Apartment.objects.filter(pk=middle_apartment.pk).update(created_at=base_time - timedelta(days=1))
+        Apartment.objects.filter(pk=newest_apartment.pk).update(created_at=base_time)
+
+        cases = [
+            ("price_asc", [newest_apartment.id, middle_apartment.id, oldest_apartment.id]),
+            ("price_desc", [oldest_apartment.id, middle_apartment.id, newest_apartment.id]),
+            ("newest", [newest_apartment.id, middle_apartment.id, oldest_apartment.id]),
+        ]
+
+        for sort, expected_ids in cases:
+            with self.subTest(sort=sort):
+                response = self.client.get("/api/catalog/apartments", {"sort": sort})
+
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                self.assertEqual([item["id"] for item in response.data["results"]], expected_ids)
 
     def test_non_admin_cannot_write_catalog(self):
         response = self.client.post(

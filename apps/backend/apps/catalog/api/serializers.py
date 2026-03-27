@@ -399,6 +399,8 @@ class ApartmentWriteSerializer(serializers.ModelSerializer):
 
 
 class ApartmentMapPreviewSerializer(serializers.ModelSerializer):
+    city = LocationCitySerializer(read_only=True)
+    district = LocationDistrictSerializer(read_only=True)
     primary_image = serializers.SerializerMethodField()
     payment_options = ApartmentPaymentOptionSerializer(many=True, read_only=True)
     company_name = serializers.CharField(source="building.project.company.name", read_only=True)
@@ -417,6 +419,8 @@ class ApartmentMapPreviewSerializer(serializers.ModelSerializer):
             "currency",
             "latitude",
             "longitude",
+            "city",
+            "district",
             "rooms",
             "size_sqm",
             "status",

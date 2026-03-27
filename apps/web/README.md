@@ -6,7 +6,12 @@ Current scope:
 - premium dark cinematic homepage
 - live backend-driven companies, projects, and map apartments
 - interactive Leaflet map
-- no public browse routes yet beyond `/`
+- developer hub route at `/developers`
+- project hub route at `/projects`
+- apartment comparison route at `/compare?slugs=...`
+- cinematic building detail route at `/projects/[projectSlug]/buildings/[buildingSlug]`
+- public apartment detail route at `/apartments/[slug]`
+- no broader public browse routes yet beyond `/`, `/map`, `/developers`, `/projects`, `/compare`, apartment detail, and building detail
 
 Run locally:
 - create `.env.local` from `.env.example`

@@ -395,6 +395,14 @@ class ApartmentListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
         if (params.get("random") or "").lower() in {"1", "true", "yes"}:
             return queryset.order_by("?")
 
+        sort = params.get("sort")
+        if sort == "newest":
+            return queryset.order_by("-created_at", "-id")
+        if sort == "price_desc":
+            return queryset.order_by("-price", "-created_at", "building__name", "apartment_number")
+        if sort == "price_asc":
+            return queryset.order_by("price", "-created_at", "building__name", "apartment_number")
+
         return queryset.order_by("price", "building__name", "apartment_number")
 
     def get_serializer_class(self):

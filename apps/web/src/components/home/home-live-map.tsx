@@ -3,13 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 
 import { getPublicApartmentDetail } from "@/lib/api/public";
-import { formatCompactCurrency, formatCurrency, formatRooms } from "@/lib/utils/format";
+import { formatCompactCurrency, formatCurrency, formatLabel, formatRooms } from "@/lib/utils/format";
 import type { PublicApartmentDetail, PublicMapApartment } from "@/types/home";
 
 type HomeLiveMapProps = {
   items: PublicMapApartment[];
   variant?: "preview" | "fullscreen";
+  autoLocate?: boolean;
 };
+
+type AggregationMode = "district" | "radius" | "exact";
 
 type MapViewport = {
   zoom: number;
@@ -20,6 +23,7 @@ type MapViewport = {
 };
 
 type DetailStatus = "idle" | "loading" | "ready" | "error";
+type LocationStatus = "idle" | "requesting" | "ready" | "denied" | "unavailable" | "unsupported";
 
 type NormalizedApartment = PublicMapApartment & {
   lat: number;
@@ -29,9 +33,12 @@ type NormalizedApartment = PublicMapApartment & {
 type ClusterGroup = {
   count: number;
   items: NormalizedApartment[];
+  kind: "district" | "radius";
   lat: number;
   lng: number;
   bounds: [number, number][];
+  subtitle: string;
+  title: string;
 };
 
 type DetailImage = {
@@ -41,10 +48,18 @@ type DetailImage = {
 };
 
 type LeafletMap = import("leaflet").Map;
+type LeafletLayerGroup = import("leaflet").LayerGroup;
+
+type UserLocation = {
+  accuracy: number;
+  lat: number;
+  lng: number;
+};
 
 const DEFAULT_CENTER: [number, number] = [41.311081, 69.240562];
 const DEFAULT_CITY_NAME = "Tashkent";
-const CLUSTER_ZOOM_THRESHOLD = 14;
+const DISTRICT_VIEW_MAX_ZOOM = 11;
+const EXACT_MARKER_ZOOM_THRESHOLD = 14;
 
 let leafletPromise: Promise<typeof import("leaflet")> | null = null;
 
@@ -119,76 +134,120 @@ function getVisibleItems(items: NormalizedApartment[], viewport: MapViewport | n
   return items.filter((item) => isWithinViewport(item, viewport));
 }
 
-function getClusterCellSize(zoom: number) {
-  if (zoom <= 10) {
-    return 152;
+function getAggregationMode(zoom: number): AggregationMode {
+  if (zoom <= DISTRICT_VIEW_MAX_ZOOM) {
+    return "district";
   }
 
-  if (zoom <= 11) {
-    return 132;
+  if (zoom < EXACT_MARKER_ZOOM_THRESHOLD) {
+    return "radius";
   }
 
-  if (zoom <= 12) {
-    return 110;
-  }
-
-  return 92;
+  return "exact";
 }
 
-function buildClusterGroups(items: NormalizedApartment[], map: LeafletMap, zoom: number): ClusterGroup[] {
-  const cellSize = getClusterCellSize(zoom);
-  const buckets = new Map<
-    string,
-    {
-      items: NormalizedApartment[];
-      sumLat: number;
-      sumLng: number;
-      minLat: number;
-      maxLat: number;
-      minLng: number;
-      maxLng: number;
-    }
-  >();
+function getNearbyRadiusMeters(zoom: number) {
+  return zoom <= 12 ? 3000 : 2000;
+}
+
+function buildClusterGroup(
+  items: NormalizedApartment[],
+  kind: ClusterGroup["kind"],
+  title: string,
+  subtitle: string,
+): ClusterGroup {
+  const sumLat = items.reduce((total, item) => total + item.lat, 0);
+  const sumLng = items.reduce((total, item) => total + item.lng, 0);
+  const minLat = Math.min(...items.map((item) => item.lat));
+  const maxLat = Math.max(...items.map((item) => item.lat));
+  const minLng = Math.min(...items.map((item) => item.lng));
+  const maxLng = Math.max(...items.map((item) => item.lng));
+
+  return {
+    count: items.length,
+    items,
+    kind,
+    lat: sumLat / items.length,
+    lng: sumLng / items.length,
+    bounds: [
+      [minLat, minLng] as [number, number],
+      [maxLat, maxLng] as [number, number],
+    ],
+    subtitle,
+    title,
+  };
+}
+
+function buildDistrictGroups(items: NormalizedApartment[]): ClusterGroup[] {
+  const buckets = new Map<string, { items: NormalizedApartment[]; subtitle: string; title: string }>();
 
   items.forEach((item) => {
-    const point = map.latLngToContainerPoint([item.lat, item.lng]);
-    const key = `${Math.floor(point.x / cellSize)}:${Math.floor(point.y / cellSize)}`;
+    const key = item.district ? `district:${item.district.id}` : `city:${item.city.id}`;
+    const title = item.district?.name ?? item.city.name;
+    const subtitle = item.district ? "homes for sale" : "undistricted homes";
     const existing = buckets.get(key);
 
     if (existing) {
       existing.items.push(item);
-      existing.sumLat += item.lat;
-      existing.sumLng += item.lng;
-      existing.minLat = Math.min(existing.minLat, item.lat);
-      existing.maxLat = Math.max(existing.maxLat, item.lat);
-      existing.minLng = Math.min(existing.minLng, item.lng);
-      existing.maxLng = Math.max(existing.maxLng, item.lng);
       return;
     }
 
     buckets.set(key, {
       items: [item],
-      sumLat: item.lat,
-      sumLng: item.lng,
-      minLat: item.lat,
-      maxLat: item.lat,
-      minLng: item.lng,
-      maxLng: item.lng,
+      subtitle,
+      title,
     });
   });
 
   return Array.from(buckets.values())
-    .map((bucket) => ({
-      count: bucket.items.length,
-      items: bucket.items,
-      lat: bucket.sumLat / bucket.items.length,
-      lng: bucket.sumLng / bucket.items.length,
-      bounds: [
-        [bucket.minLat, bucket.minLng] as [number, number],
-        [bucket.maxLat, bucket.maxLng] as [number, number],
-      ],
-    }))
+    .map((bucket) => buildClusterGroup(bucket.items, "district", bucket.title, bucket.subtitle))
     .sort((left, right) => right.count - left.count);
+}
+
+function buildRadiusGroups(items: NormalizedApartment[], map: LeafletMap, radiusMeters: number): ClusterGroup[] {
+  const remaining = [...items].sort((left, right) => left.lat - right.lat || left.lng - right.lng);
+  const groups: ClusterGroup[] = [];
+
+  while (remaining.length) {
+    const seed = remaining.shift();
+    if (!seed) {
+      break;
+    }
+
+    const grouped = [seed];
+    const queue = [seed];
+
+    while (queue.length) {
+      const current = queue.pop();
+      if (!current) {
+        continue;
+      }
+
+      for (let index = remaining.length - 1; index >= 0; index -= 1) {
+        const candidate = remaining[index];
+        const distance = map.distance([current.lat, current.lng], [candidate.lat, candidate.lng]);
+
+        if (distance > radiusMeters) {
+          continue;
+        }
+
+        grouped.push(candidate);
+        queue.push(candidate);
+        remaining.splice(index, 1);
+      }
+    }
+
+    groups.push(
+      buildClusterGroup(
+        grouped,
+        "radius",
+        `Within ${Math.round(radiusMeters / 1000)} km`,
+        "homes for sale",
+      ),
+    );
+  }
+
+  return groups.sort((left, right) => right.count - left.count);
 }
 
 function escapeHtml(value: string) {
@@ -209,29 +268,24 @@ function getInitials(value: string) {
     .join("");
 }
 
-function formatLabel(value: string) {
-  return value
-    .split("_")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function createClusterIcon(
   L: typeof import("leaflet"),
-  count: number,
+  group: ClusterGroup,
   isSelected: boolean,
 ) {
-  const size = Math.min(118, 66 + Math.min(count, 10) * 4);
+  const isDistrict = group.kind === "district";
+  const width = isDistrict ? Math.min(176, 144 + Math.min(group.count, 10) * 4) : Math.min(128, 86 + Math.min(group.count, 10) * 4);
+  const height = isDistrict ? 116 : width;
 
   return L.divIcon({
     className: "home-map-cluster-marker-shell",
-    html: `<span class="home-map-cluster-marker${isSelected ? " home-map-cluster-marker-selected" : ""}">
-      <strong>${count}</strong>
-      <small>${count === 1 ? "home" : "homes"}</small>
+    html: `<span class="home-map-cluster-marker home-map-cluster-marker-${group.kind}${isSelected ? " home-map-cluster-marker-selected" : ""}">
+      <small>${escapeHtml(group.title)}</small>
+      <strong>${group.count}</strong>
+      <span>${escapeHtml(group.count === 1 ? group.subtitle.replace("homes", "home") : group.subtitle)}</span>
     </span>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    iconSize: [width, height],
+    iconAnchor: [width / 2, height / 2],
   });
 }
 
@@ -295,19 +349,63 @@ function getLocationLabel(detail: PublicApartmentDetail | null) {
   return district ? `${district}, ${city}` : city;
 }
 
-export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
+function getLocationFeedback(status: LocationStatus) {
+  if (status === "requesting") {
+    return {
+      tone: "neutral",
+      message: "Finding your current location on the map…",
+    };
+  }
+
+  if (status === "ready") {
+    return {
+      tone: "success",
+      message: "Showing your current location so you can browse homes nearby.",
+    };
+  }
+
+  if (status === "denied") {
+    return {
+      tone: "error",
+      message: "Location access is off. Enable it in your browser settings and try Near me again.",
+    };
+  }
+
+  if (status === "unavailable") {
+    return {
+      tone: "error",
+      message: "Your location could not be detected right now. Try Near me again in a moment.",
+    };
+  }
+
+  if (status === "unsupported") {
+    return {
+      tone: "error",
+      message: "This browser does not support location access for the live map.",
+    };
+  }
+
+  return null;
+}
+
+export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: HomeLiveMapProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailStatus, setDetailStatus] = useState<DetailStatus>("idle");
   const [detailData, setDetailData] = useState<PublicApartmentDetail | null>(null);
   const [detailRequestKey, setDetailRequestKey] = useState(0);
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
+  const [mapReady, setMapReady] = useState(false);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const mapRef = useRef<HTMLDivElement | null>(null);
   const leafletMapRef = useRef<LeafletMap | null>(null);
   const leafletLibRef = useRef<typeof import("leaflet") | null>(null);
-  const markerLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const markerLayerRef = useRef<LeafletLayerGroup | null>(null);
+  const userLocationLayerRef = useRef<LeafletLayerGroup | null>(null);
   const itemSignatureRef = useRef("");
   const loadedDetailSlugRef = useRef<string | null>(null);
+  const autoLocateHandledRef = useRef(false);
 
   const apartments = normalizeItems(items);
   const apartmentSignature = apartments
@@ -317,10 +415,67 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
   const selectedDetail = selectedApartment && detailData?.slug === selectedApartment.slug ? detailData : null;
   const visibleItems = getVisibleItems(apartments, mapViewport);
   const isPreview = variant === "preview";
+  const canLocateUser = variant === "fullscreen";
   const fitMaxZoom = isPreview ? 13 : 14;
-  const isClusterMode = apartments.length > 1 && (mapViewport?.zoom ?? 11) < CLUSTER_ZOOM_THRESHOLD;
+  const mapZoom = mapViewport?.zoom ?? DISTRICT_VIEW_MAX_ZOOM;
+  const aggregationMode = apartments.length > 1 ? getAggregationMode(mapZoom) : "exact";
+  const nearbyRadiusMeters = aggregationMode === "radius" ? getNearbyRadiusMeters(mapZoom) : null;
   const detailImages = selectedApartment ? getDetailImages(selectedDetail, selectedApartment) : [];
   const detailLeadImage = selectedApartment ? getLeadImage(selectedDetail, selectedApartment) : null;
+  const locationFeedback = canLocateUser ? getLocationFeedback(locationStatus) : null;
+
+  const handleShowMap = () => {
+    const map = leafletMapRef.current;
+    if (!map) {
+      return;
+    }
+
+    setSelectedId(null);
+    setDetailOpen(false);
+    fitMapToApartments(map, apartments, fitMaxZoom);
+    setMapViewport(getViewport(map));
+  };
+
+  const requestUserLocation = () => {
+    if (!canLocateUser || typeof window === "undefined") {
+      return;
+    }
+
+    if (!("geolocation" in navigator)) {
+      setLocationStatus("unsupported");
+      return;
+    }
+
+    setSelectedId(null);
+    setDetailOpen(false);
+    setLocationStatus("requesting");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextLocation = {
+          accuracy: position.coords.accuracy,
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+
+        setUserLocation(nextLocation);
+        setLocationStatus("ready");
+      },
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationStatus("denied");
+          return;
+        }
+
+        setLocationStatus("unavailable");
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 60000,
+        timeout: 10000,
+      },
+    );
+  };
 
   useEffect(() => {
     if (!apartments.length) {
@@ -334,6 +489,15 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
       setDetailOpen(false);
     }
   }, [apartmentSignature, selectedId]);
+
+  useEffect(() => {
+    if (aggregationMode === "exact" || selectedId === null) {
+      return;
+    }
+
+    setSelectedId(null);
+    setDetailOpen(false);
+  }, [aggregationMode, selectedId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -365,6 +529,7 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
         }).addTo(map);
 
         markerLayerRef.current = L.layerGroup().addTo(map);
+        userLocationLayerRef.current = L.layerGroup().addTo(map);
         leafletMapRef.current = map;
 
         const syncViewport = () => {
@@ -379,6 +544,7 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
         window.setTimeout(() => {
           map.invalidateSize();
           syncViewport();
+          setMapReady(true);
         }, 150);
       })
       .catch(() => undefined);
@@ -387,8 +553,10 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
       cancelled = true;
       detachEvents?.();
       markerLayerRef.current?.remove();
+      userLocationLayerRef.current?.remove();
       leafletMapRef.current?.remove();
       markerLayerRef.current = null;
+      userLocationLayerRef.current = null;
       leafletMapRef.current = null;
       leafletLibRef.current = null;
     };
@@ -427,18 +595,17 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
     const currentVisibleItems = getVisibleItems(apartments, mapViewport);
     const renderItems = mapViewport ? currentVisibleItems : apartments;
 
-    if (isClusterMode) {
-      buildClusterGroups(renderItems, map, mapViewport?.zoom ?? map.getZoom()).forEach((cluster) => {
+    if (aggregationMode === "district") {
+      buildDistrictGroups(renderItems).forEach((cluster) => {
         const isSelectedCluster = cluster.items.some((item) => item.id === selectedId);
         const marker = L.marker([cluster.lat, cluster.lng], {
-          icon: createClusterIcon(L, cluster.count, isSelectedCluster),
+          icon: createClusterIcon(L, cluster, isSelectedCluster),
         });
 
         marker.on("click", () => {
           if (cluster.count === 1) {
             const [apartment] = cluster.items;
-            setSelectedId(apartment.id);
-            map.setView([apartment.lat, apartment.lng], CLUSTER_ZOOM_THRESHOLD + 1, {
+            map.setView([apartment.lat, apartment.lng], DISTRICT_VIEW_MAX_ZOOM + 2, {
               animate: true,
             });
             return;
@@ -446,7 +613,36 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
 
           map.fitBounds(cluster.bounds, {
             padding: [80, 80],
-            maxZoom: 15,
+            maxZoom: DISTRICT_VIEW_MAX_ZOOM + 2,
+            animate: true,
+          });
+        });
+
+        marker.addTo(markerLayer);
+      });
+
+      return;
+    }
+
+    if (aggregationMode === "radius") {
+      buildRadiusGroups(renderItems, map, nearbyRadiusMeters ?? 2000).forEach((cluster) => {
+        const isSelectedCluster = cluster.items.some((item) => item.id === selectedId);
+        const marker = L.marker([cluster.lat, cluster.lng], {
+          icon: createClusterIcon(L, cluster, isSelectedCluster),
+        });
+
+        marker.on("click", () => {
+          if (cluster.count === 1) {
+            const [apartment] = cluster.items;
+            map.setView([apartment.lat, apartment.lng], EXACT_MARKER_ZOOM_THRESHOLD + 1, {
+              animate: true,
+            });
+            return;
+          }
+
+          map.fitBounds(cluster.bounds, {
+            padding: [80, 80],
+            maxZoom: EXACT_MARKER_ZOOM_THRESHOLD + 1,
             animate: true,
           });
         });
@@ -470,7 +666,72 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
 
         marker.addTo(markerLayer);
       });
-  }, [apartmentSignature, isClusterMode, mapViewport, selectedId]);
+  }, [aggregationMode, apartmentSignature, mapViewport, nearbyRadiusMeters, selectedId]);
+
+  useEffect(() => {
+    const L = leafletLibRef.current;
+    const map = leafletMapRef.current;
+    const userLocationLayer = userLocationLayerRef.current;
+
+    if (!L || !map || !userLocationLayer) {
+      return;
+    }
+
+    userLocationLayer.clearLayers();
+
+    if (!userLocation) {
+      return;
+    }
+
+    const accuracyRadius = Number.isFinite(userLocation.accuracy)
+      ? Math.min(Math.max(userLocation.accuracy, 70), 260)
+      : 120;
+
+    L.circle([userLocation.lat, userLocation.lng], {
+      radius: accuracyRadius,
+      color: "#d4af37",
+      fillColor: "#d4af37",
+      fillOpacity: 0.16,
+      opacity: 0.34,
+      weight: 1,
+    }).addTo(userLocationLayer);
+
+    L.circleMarker([userLocation.lat, userLocation.lng], {
+      radius: 10,
+      color: "#08111e",
+      fillColor: "#f2ddb0",
+      fillOpacity: 1,
+      weight: 3,
+    }).addTo(userLocationLayer);
+  }, [mapViewport, userLocation]);
+
+  useEffect(() => {
+    const map = leafletMapRef.current;
+
+    if (!mapReady || !map || !userLocation || locationStatus !== "ready") {
+      return;
+    }
+
+    map.setView([userLocation.lat, userLocation.lng], Math.max(map.getZoom(), 15), {
+      animate: true,
+    });
+    setMapViewport(getViewport(map));
+  }, [locationStatus, mapReady, userLocation]);
+
+  useEffect(() => {
+    if (!autoLocate || !canLocateUser || !mapReady || autoLocateHandledRef.current) {
+      return;
+    }
+
+    autoLocateHandledRef.current = true;
+    requestUserLocation();
+
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("locate");
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+  }, [autoLocate, canLocateUser, mapReady]);
 
   useEffect(() => {
     if (!detailOpen || !selectedApartment) {
@@ -547,7 +808,9 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
         <div ref={mapRef} className="home-map-canvas" />
 
         <div className="home-map-status-bar">
-          <span className="home-map-status-pill">{isClusterMode ? "Area view" : "Exact homes"}</span>
+          <span className="home-map-status-pill">
+            {aggregationMode === "district" ? "District totals" : aggregationMode === "radius" ? "Nearby homes" : "Exact homes"}
+          </span>
           <span className="home-map-status-pill">
             {visibleItems.length} visible {visibleItems.length === 1 ? "home" : "homes"}
           </span>
@@ -573,24 +836,44 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
           <button
             type="button"
             className="home-map-control-button home-map-control-button-wide"
-            onClick={() => {
-              const map = leafletMapRef.current;
-              if (!map) {
-                return;
-              }
-
-              fitMapToApartments(map, apartments, fitMaxZoom);
-              setMapViewport(getViewport(map));
-            }}
+            onClick={handleShowMap}
           >
-            Reset
+            Show map
           </button>
+          {canLocateUser ? (
+            <button
+              type="button"
+              className="home-map-control-button home-map-control-button-wide"
+              onClick={requestUserLocation}
+              disabled={locationStatus === "requesting"}
+            >
+              {locationStatus === "requesting" ? "Locating" : "Near me"}
+            </button>
+          ) : null}
         </div>
+
+        {locationFeedback ? (
+          <div
+            className={`home-map-location-feedback home-map-location-feedback-${locationFeedback.tone}`}
+            aria-live="polite"
+          >
+            <strong>Location</strong>
+            <p>{locationFeedback.message}</p>
+          </div>
+        ) : null}
 
         {!selectedApartment ? (
           <div className={`home-map-hint-bar${isPreview ? "" : " home-map-hint-bar-fullscreen"}`}>
-            <span className="home-map-hint-pill">Area counts first</span>
-            <span className="home-map-hint-pill">Zoom in for exact homes</span>
+            <span className="home-map-hint-pill">
+              {aggregationMode === "district"
+                ? "District totals first"
+                : aggregationMode === "radius"
+                  ? `Nearby homes within ${Math.round((nearbyRadiusMeters ?? 2000) / 1000)} km`
+                  : "Exact homes with photos"}
+            </span>
+            <span className="home-map-hint-pill">
+              {aggregationMode === "district" ? "Zoom in for nearby areas" : "Zoom in for exact homes"}
+            </span>
             <span className="home-map-hint-pill">
               {isPreview ? "Preview the city here" : "Click a home to inspect it"}
             </span>
@@ -649,6 +932,9 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
                   >
                     Back
                   </button>
+                  <a href={`/apartments/${selectedApartment.slug}`} className="home-map-inline-button">
+                    View page
+                  </a>
                   <button
                     type="button"
                     className="home-map-action-button"
@@ -794,6 +1080,18 @@ export function HomeLiveMap({ items, variant = "preview" }: HomeLiveMapProps) {
               <div className="home-map-detail-description">
                 <h4>About this apartment</h4>
                 <p>{detailDescription}</p>
+              </div>
+
+              <div className="home-map-detail-actions">
+                <a href={`/apartments/${selectedApartment.slug}`} className="home-map-action-button">
+                  Open residence page
+                </a>
+                <a
+                  href={`/projects/${selectedApartment.project_slug}/buildings/${selectedApartment.building_slug}`}
+                  className="home-map-inline-button"
+                >
+                  View building
+                </a>
               </div>
             </aside>
           </>

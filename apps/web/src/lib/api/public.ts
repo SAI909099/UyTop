@@ -1,5 +1,10 @@
 import { env } from '@/lib/config/env';
 import type {
+  PublicCompanyQuery,
+  PublicCompanyDetail,
+  PublicBuildingDetail,
+  PublicBuildingQuery,
+  PublicBuildingSummary,
   PublicApartmentQuery,
   HomepageData,
   PaginatedResponse,
@@ -13,7 +18,12 @@ import type {
 } from '@/types/home';
 
 async function fetchPublicApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${env.apiBaseUrl}${path}`, {
+  const target =
+    typeof window === 'undefined'
+      ? `${env.apiBaseUrl}${path}`
+      : `/api/public-proxy${path}`;
+
+  const response = await fetch(target, {
     ...init,
     headers: {
       Accept: 'application/json',
@@ -64,13 +74,25 @@ function emptyLookups(): PublicCatalogLookups {
   };
 }
 
+export function getPublicCompanies(init?: RequestInit) {
+  return fetchPublicApi<PaginatedResponse<PublicCompany>>('/catalog/companies', init);
+}
+
+export function getPublicCompaniesPage(params: PublicCompanyQuery = {}, init?: RequestInit) {
+  const query = buildQuery({
+    page: params.page,
+    page_size: params.pageSize,
+  });
+
+  return fetchPublicApi<PaginatedResponse<PublicCompany>>(`/catalog/companies${query}`, init);
+}
+
 export async function getHomepageData(): Promise<HomepageData> {
-  const [companiesResult, projectsResult, showcaseApartmentsResult, apartmentsResult, lookupsResult] =
+  const [companiesResult, projectsResult, showcaseApartmentsResult, lookupsResult] =
     await Promise.allSettled([
-      fetchPublicApi<PaginatedResponse<PublicCompany>>('/catalog/companies'),
+      getPublicCompanies(),
       getPublicProjects({ sort: 'featured', pageSize: 20 }),
       getPublicApartments({ pageSize: 3, random: true }),
-      fetchPublicApi<PaginatedResponse<PublicMapApartment>>('/catalog/map/apartments'),
       getPublicCatalogLookups(),
     ]);
 
@@ -80,8 +102,6 @@ export async function getHomepageData(): Promise<HomepageData> {
     showcaseApartmentsResult.status === 'fulfilled'
       ? showcaseApartmentsResult.value
       : emptyResponse<PublicApartmentSummary>();
-  const mapApartments =
-    apartmentsResult.status === 'fulfilled' ? apartmentsResult.value : emptyResponse<PublicMapApartment>();
   const lookups = lookupsResult.status === 'fulfilled' ? lookupsResult.value : emptyLookups();
 
   return {
@@ -94,8 +114,6 @@ export async function getHomepageData(): Promise<HomepageData> {
     projectRoomCounts: lookups.project_room_counts,
     showcaseApartments: showcaseApartments.results,
     showcaseApartmentsCount: showcaseApartments.count,
-    mapApartments: mapApartments.results,
-    mapApartmentsCount: mapApartments.count,
   };
 }
 
@@ -119,6 +137,16 @@ export function getPublicCatalogLookups(init?: RequestInit) {
   return fetchPublicApi<PublicCatalogLookups>('/catalog/lookups', init);
 }
 
+export function getPublicBuildings(params: PublicBuildingQuery = {}, init?: RequestInit) {
+  const query = buildQuery({
+    project: params.project,
+    page: params.page,
+    page_size: params.pageSize,
+  });
+
+  return fetchPublicApi<PaginatedResponse<PublicBuildingSummary>>(`/catalog/buildings${query}`, init);
+}
+
 export function getPublicApartments(params: PublicApartmentQuery = {}, init?: RequestInit) {
   const query = buildQuery({
     min_price: params.minPrice,
@@ -126,6 +154,7 @@ export function getPublicApartments(params: PublicApartmentQuery = {}, init?: Re
     delivery_year: params.deliveryYear,
     address_query: params.addressQuery,
     rooms: params.rooms?.join(','),
+    sort: params.sort,
     page: params.page,
     page_size: params.pageSize,
     random: params.random ? '1' : undefined,
@@ -134,14 +163,32 @@ export function getPublicApartments(params: PublicApartmentQuery = {}, init?: Re
   return fetchPublicApi<PaginatedResponse<PublicApartmentSummary>>(`/catalog/apartments${query}`, init);
 }
 
-export async function getPublicMapApartments(): Promise<PaginatedResponse<PublicMapApartment>> {
+type PublicMapApartmentOptions = {
+  suppressErrors?: boolean;
+};
+
+export async function getPublicMapApartments(
+  options: PublicMapApartmentOptions = {},
+): Promise<PaginatedResponse<PublicMapApartment>> {
   try {
     return await fetchPublicApi<PaginatedResponse<PublicMapApartment>>('/catalog/map/apartments');
-  } catch {
-    return emptyResponse<PublicMapApartment>();
+  } catch (error) {
+    if (options.suppressErrors) {
+      return emptyResponse<PublicMapApartment>();
+    }
+
+    throw error;
   }
 }
 
 export function getPublicApartmentDetail(slug: string): Promise<PublicApartmentDetail> {
   return fetchPublicApi<PublicApartmentDetail>(`/catalog/apartments/${slug}`);
+}
+
+export function getPublicCompanyDetail(slug: string): Promise<PublicCompanyDetail> {
+  return fetchPublicApi<PublicCompanyDetail>(`/catalog/companies/${slug}`);
+}
+
+export function getPublicBuildingDetail(slug: string): Promise<PublicBuildingDetail> {
+  return fetchPublicApi<PublicBuildingDetail>(`/catalog/buildings/${slug}`);
 }

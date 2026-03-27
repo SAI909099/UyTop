@@ -1,6 +1,6 @@
 # Web Route Functions Inventory
 
-Last updated: 2026-03-25
+Last updated: 2026-03-27
 
 This file tracks the public `3000` routes, the components/functions they depend on, and the latest design/system changes. Update the relevant entry after every customer-facing web change.
 
@@ -63,9 +63,9 @@ This file tracks the public `3000` routes, the components/functions they depend 
   - `getCatalogFeaturedDeveloper`
   - `getDeveloperHref`
 - Design/system notes:
-  - Clean white-card directory view tied to the new shared public shell.
+  - Dark premium directory view with glass search, segmented filters, and trust-first comparison cards tied to the shared public shell.
 - Last changes:
-  - 2026-03-25: Added a portfolio stat board above the directory so the listing route carries the same dashboard-grade information density as the rest of the redesign.
+  - 2026-03-27: Replaced the placeholder listing concept with a live-data Developer Hub route that derives experience from company detail payloads and filters the roster by search, region, and portfolio buckets.
 
 ## `/developers/[companySlug]`
 
@@ -91,6 +91,43 @@ This file tracks the public `3000` routes, the components/functions they depend 
   - Company profile layout stays feature-compatible but now inherits the shared luxury treatment.
 - Last changes:
   - 2026-03-25: Added a company snapshot strip for headquarters, flagship project, delivery scale, and visible apartment inventory.
+
+## `/projects`
+
+- Page purpose:
+  - Canonical public directory for browsing and filtering live residential launches.
+- Components used:
+  - `ProjectHub`
+  - `HomePrimaryNav`
+- Key helper/API functions:
+  - `getPublicProjects`
+  - `getPublicCompaniesPage`
+  - `getPublicCatalogLookups`
+  - `formatCurrency`
+  - `formatCompactNumber`
+  - `formatRooms`
+- Design/system notes:
+  - The route mirrors the Developer Hub rhythm but shifts the focus to launch comparison, with a serif hero, premium filter shell, and live project cards kept informational in v1 rather than routing into an unfinished detail page.
+- Last changes:
+  - 2026-03-27: Added a standalone `/projects` hub with search, developer and region filters, price and delivery controls, room-match refinement, and canonical navigation from the shared header and homepage CTAs.
+
+## `/compare`
+
+- Page purpose:
+  - Shareable apartment comparison route for side-by-side decision support across live public units.
+- Components used:
+  - `ApartmentComparisonMatrix`
+  - `HomePrimaryNav`
+- Key helper/API functions:
+  - `getPublicApartmentDetail`
+  - `getPublicBuildings`
+  - `formatCurrency`
+  - `formatRooms`
+  - `formatLabel`
+- Design/system notes:
+  - The page shifts the public UI into a cleaner matrix mode with sticky metric labels, thumbnail-led apartment columns, subtle sort controls, and a single gold “best value per sqm” highlight when currencies match.
+- Last changes:
+  - 2026-03-27: Added a live-data comparison matrix route at `/compare?slugs=...` with up to four apartments, client-side column sorting, delivery values derived from building summaries, and premium empty/error states.
 
 ## `/projects/[projectSlug]`
 
@@ -120,23 +157,20 @@ This file tracks the public `3000` routes, the components/functions they depend 
 ## `/projects/[projectSlug]/buildings/[buildingSlug]`
 
 - Page purpose:
-  - Building detail page for room types, apartment cards, gallery, and booking CTA.
+  - Cinematic building detail page for floor exploration, stylized technical diagrams, live unit availability, and a sticky price sidebar.
 - Components used:
-  - `ApartmentBrowser`
-  - `AvailabilitySummary`
-  - `BrandHero`
-  - `ButtonLink`
-  - `PremiumCard`
-  - `SectionHeading`
+  - `BuildingDetailView`
+  - `BuildingFloorExplorer`
+  - `HomePrimaryNav`
 - Key helper/API functions:
-  - `getCatalogBuildingBySlug`
+  - `getPublicBuildingDetail`
   - `formatCurrency`
-  - `getDeveloperHref`
-  - `getProjectHref`
+  - `formatLabel`
+  - route-level project/building slug validation
 - Design/system notes:
-  - Although nested under project detail, this is part of the customer-facing route set and must stay visually aligned.
+  - The page shifts the public experience toward a darker, more architectural presentation, with the hero media carrying the cinematic weight and the split layout keeping floor interaction and pricing visible at the same time.
 - Last changes:
-  - 2026-03-25: Added a building snapshot strip for status, total apartments, room mix, and area range before the apartment-type explorer.
+  - 2026-03-27: Added a live-data building route with a dusk hero, floor-selector slider, technical diagram treatment, unit list, and sticky price-and-availability card.
 
 ## `/apartments`
 
@@ -155,6 +189,24 @@ This file tracks the public `3000` routes, the components/functions they depend 
   - Map browsing now sits inside the same luxury shell instead of feeling like a standalone utility page.
 - Last changes:
   - 2026-03-25: Added a route-level map snapshot strip for pin count, developer coverage, project coverage, and visible entry pricing.
+
+## `/apartments/[slug]`
+
+- Page purpose:
+  - Individual apartment detail page for the live catalog inventory.
+- Components used:
+  - `ApartmentDetailView`
+  - `ApartmentLocationMap`
+  - `HomePrimaryNav`
+- Key helper/API functions:
+  - `getPublicApartmentDetail`
+  - `formatCurrency`
+  - `formatRooms`
+  - `formatLabel`
+- Design/system notes:
+  - Uses the same dark cinematic shell as the homepage, but shifts from map discovery into a quiet-luxury single-residence narrative with gallery, snapshot strip, financing notes, and an exact location map.
+- Last changes:
+  - 2026-03-27: Added a live-data apartment detail route with gallery fallback handling, payment-option cards, location map, and links from the homepage showcase and map overlay into the standalone detail page.
 
 ## `/properties/[slugOrId]`
 

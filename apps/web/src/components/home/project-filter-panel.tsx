@@ -894,6 +894,10 @@ export function ProjectFilterPanel({
                           <span>{apartment.areaLabel}</span>
                           <span>{apartment.project_name}</span>
                         </div>
+
+                        <a href={`/apartments/${apartment.slug}`} className="apartment-showcase-link">
+                          View residence
+                        </a>
                       </div>
                     </article>
                   ))
