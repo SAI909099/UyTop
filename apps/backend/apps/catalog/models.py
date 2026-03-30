@@ -1,7 +1,7 @@
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Point
 
-from apps.common.models import TimeStampedModel
+from apps.common.models import TimeStampedModel, TranslatableContentModel
 from apps.common.utils import generate_unique_slug
 
 
@@ -26,17 +26,25 @@ class PaymentOptionType(models.TextChoices):
     SPLIT_PAYMENT = "split_payment", "Split payment"
 
 
-class DeveloperCompany(TimeStampedModel):
+class DeveloperCompany(TranslatableContentModel, TimeStampedModel):
+    TRANSLATABLE_FIELDS = ("name", "tagline", "short_description", "description", "headquarters", "trust_note")
+
     name = models.CharField(max_length=255, unique=True)
+    name_translations = models.JSONField(default=dict, blank=True)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     tagline = models.CharField(max_length=255, blank=True)
+    tagline_translations = models.JSONField(default=dict, blank=True)
     short_description = models.CharField(max_length=320, blank=True)
+    short_description_translations = models.JSONField(default=dict, blank=True)
     description = models.TextField(blank=True)
+    description_translations = models.JSONField(default=dict, blank=True)
     logo_url = models.URLField(max_length=1000, blank=True)
     hero_image_url = models.URLField(max_length=1000, blank=True)
     founded_year = models.PositiveSmallIntegerField(null=True, blank=True)
     headquarters = models.CharField(max_length=255, blank=True)
+    headquarters_translations = models.JSONField(default=dict, blank=True)
     trust_note = models.CharField(max_length=320, blank=True)
+    trust_note_translations = models.JSONField(default=dict, blank=True)
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
 
@@ -52,12 +60,17 @@ class DeveloperCompany(TimeStampedModel):
         return self.name
 
 
-class ResidentialProject(TimeStampedModel):
+class ResidentialProject(TranslatableContentModel, TimeStampedModel):
+    TRANSLATABLE_FIELDS = ("name", "headline", "description", "address", "location_label", "delivery_window")
+
     company = models.ForeignKey("catalog.DeveloperCompany", on_delete=models.CASCADE, related_name="projects")
     name = models.CharField(max_length=255)
+    name_translations = models.JSONField(default=dict, blank=True)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     headline = models.CharField(max_length=320, blank=True)
+    headline_translations = models.JSONField(default=dict, blank=True)
     description = models.TextField(blank=True)
+    description_translations = models.JSONField(default=dict, blank=True)
     city = models.ForeignKey("locations.LocationCity", on_delete=models.PROTECT, related_name="catalog_projects")
     district = models.ForeignKey(
         "locations.LocationDistrict",
@@ -67,10 +80,13 @@ class ResidentialProject(TimeStampedModel):
         blank=True,
     )
     address = models.CharField(max_length=255, blank=True)
+    address_translations = models.JSONField(default=dict, blank=True)
     location_label = models.CharField(max_length=255, blank=True)
+    location_label_translations = models.JSONField(default=dict, blank=True)
     starting_price = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     currency = models.CharField(max_length=8, default="USD")
     delivery_window = models.CharField(max_length=120, blank=True)
+    delivery_window_translations = models.JSONField(default=dict, blank=True)
     hero_image_url = models.URLField(max_length=1000, blank=True)
     is_active = models.BooleanField(default=True)
 
@@ -89,14 +105,19 @@ class ResidentialProject(TimeStampedModel):
         return f"{self.company.name} / {self.name}"
 
 
-class ProjectBuilding(TimeStampedModel):
+class ProjectBuilding(TranslatableContentModel, TimeStampedModel):
+    TRANSLATABLE_FIELDS = ("name", "handover", "summary")
+
     project = models.ForeignKey("catalog.ResidentialProject", on_delete=models.CASCADE, related_name="buildings")
     code = models.CharField(max_length=32)
     name = models.CharField(max_length=255)
+    name_translations = models.JSONField(default=dict, blank=True)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     status = models.CharField(max_length=32, choices=BuildingStatus.choices, default=BuildingStatus.SALES_OPEN)
     handover = models.CharField(max_length=120, blank=True)
+    handover_translations = models.JSONField(default=dict, blank=True)
     summary = models.TextField(blank=True)
+    summary_translations = models.JSONField(default=dict, blank=True)
     total_floors = models.PositiveSmallIntegerField(null=True, blank=True)
     total_apartments = models.PositiveIntegerField(default=0)
     price_from = models.DecimalField(max_digits=14, decimal_places=2, default=0)
@@ -119,12 +140,16 @@ class ProjectBuilding(TimeStampedModel):
         return f"{self.project.name} / {self.name}"
 
 
-class Apartment(TimeStampedModel):
+class Apartment(TranslatableContentModel, TimeStampedModel):
+    TRANSLATABLE_FIELDS = ("title", "description", "address")
+
     building = models.ForeignKey("catalog.ProjectBuilding", on_delete=models.CASCADE, related_name="apartments")
     title = models.CharField(max_length=255)
+    title_translations = models.JSONField(default=dict, blank=True)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     apartment_number = models.CharField(max_length=64)
     description = models.TextField(blank=True)
+    description_translations = models.JSONField(default=dict, blank=True)
     status = models.CharField(max_length=32, choices=ApartmentAvailabilityStatus.choices, default=ApartmentAvailabilityStatus.DRAFT)
     is_public = models.BooleanField(default=False)
     price = models.DecimalField(max_digits=14, decimal_places=2)
@@ -133,6 +158,7 @@ class Apartment(TimeStampedModel):
     size_sqm = models.DecimalField(max_digits=10, decimal_places=2)
     floor = models.PositiveSmallIntegerField()
     address = models.CharField(max_length=255)
+    address_translations = models.JSONField(default=dict, blank=True)
     city = models.ForeignKey("locations.LocationCity", on_delete=models.PROTECT, related_name="catalog_apartments")
     district = models.ForeignKey(
         "locations.LocationDistrict",

@@ -1,4 +1,5 @@
 import { env } from '@/lib/config/env';
+import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, LOCALE_HEADER, normalizeLocale } from '@/lib/i18n';
 
 function getBrowserCookie(name: string) {
   if (typeof document === 'undefined') {
@@ -25,6 +26,16 @@ async function getServerAccessToken() {
   return cookieStore.get('admin_access_token')?.value ?? '';
 }
 
+async function getServerLocale() {
+  if (typeof window !== 'undefined') {
+    return DEFAULT_LOCALE;
+  }
+
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  return normalizeLocale(cookieStore.get(LOCALE_COOKIE_NAME)?.value);
+}
+
 type RequestOptions = RequestInit & {
   token?: string;
 };
@@ -39,6 +50,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   }
 
   const token = options.token || (isServer ? await getServerAccessToken() : getBrowserCookie('admin_access_token'));
+  const locale = isServer ? await getServerLocale() : normalizeLocale(getBrowserCookie(LOCALE_COOKIE_NAME));
   if (isServer && token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
@@ -46,6 +58,8 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   if (isServer && env.adminBypassEnabled) {
     headers.set('X-Admin-Bypass', 'true');
   }
+
+  headers.set(LOCALE_HEADER, locale);
 
   const response = await fetch(requestUrl, {
     ...options,
@@ -62,6 +76,15 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
           ? payload.error
           : `API request failed with status ${response.status}`;
     throw new Error(detail);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('application/json')) {
+    return undefined as T;
   }
 
   return (await response.json()) as T;

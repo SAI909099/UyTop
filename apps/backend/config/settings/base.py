@@ -46,6 +46,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "apps.common.middleware.UyTopLocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -91,10 +92,23 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "en-us"
 TIME_ZONE = os.getenv("TIME_ZONE", "UTC")
 USE_I18N = True
 USE_TZ = True
+
+LANGUAGE_CODE = "uz"
+LANGUAGES = [
+    ("uz", "Uzbek"),
+    ("en", "English"),
+    ("ru", "Russian"),
+]
+UYTOP_DEFAULT_LANGUAGE = os.getenv("UYTOP_DEFAULT_LANGUAGE", "uz")
+UYTOP_LOCALE_COOKIE_NAME = os.getenv("UYTOP_LOCALE_COOKIE_NAME", "uytop_locale")
+UYTOP_LOCALE_HEADER = os.getenv("UYTOP_LOCALE_HEADER", "X-UyTop-Locale")
+AUTO_TRANSLATION_ENABLED = os.getenv("AUTO_TRANSLATION_ENABLED", "false").lower() == "true"
+TRANSLATION_PROVIDER = os.getenv("TRANSLATION_PROVIDER", "google")
+TRANSLATION_TIMEOUT_SECONDS = int(os.getenv("TRANSLATION_TIMEOUT_SECONDS", "10"))
+GOOGLE_TRANSLATE_API_KEY = os.getenv("GOOGLE_TRANSLATE_API_KEY", "")
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"

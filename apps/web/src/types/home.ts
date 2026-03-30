@@ -1,3 +1,22 @@
+export type LocaleCode = 'uz' | 'en' | 'ru';
+
+export type TranslationState = 'not_requested' | 'pending' | 'completed' | 'failed' | 'stale';
+
+export type LocalizedFieldTranslations = Partial<Record<LocaleCode, string>>;
+
+export type TranslationPayload = Record<string, LocalizedFieldTranslations>;
+
+export type TranslationStatusMap = Record<string, Partial<Record<LocaleCode, string>>>;
+
+export type TranslatableRecordMeta = {
+  source_language: LocaleCode;
+  translations: TranslationPayload;
+  translation_state: TranslationState;
+  translation_status_map: TranslationStatusMap;
+  translation_updated_at: string | null;
+  translation_error: string;
+};
+
 export type PaginatedResponse<T> = {
   count: number;
   next: string | null;
@@ -16,7 +35,7 @@ export type LocationRef = {
   slug: string;
 };
 
-export type PublicCompany = {
+export type PublicCompany = TranslatableRecordMeta & {
   id: number;
   name: string;
   slug: string;
@@ -48,7 +67,7 @@ export type DeveloperHubCompany = PublicCompany & {
   experience_years: number | null;
 };
 
-export type PublicProject = {
+export type PublicProject = TranslatableRecordMeta & {
   id: number;
   company: number;
   name: string;
@@ -65,7 +84,7 @@ export type PublicProject = {
   building_count: number;
 };
 
-export type PublicBuildingSummary = {
+export type PublicBuildingSummary = TranslatableRecordMeta & {
   id: number;
   project: number;
   code: string;
@@ -141,7 +160,7 @@ export type PublicApartmentImage = {
   is_primary: boolean;
 };
 
-export type PublicMapApartment = {
+export type PublicMapApartment = TranslatableRecordMeta & {
   id: number;
   slug: string;
   title: string;
@@ -163,7 +182,7 @@ export type PublicMapApartment = {
   payment_options: PaymentOption[];
 };
 
-export type PublicApartmentDetail = {
+export type PublicApartmentDetail = TranslatableRecordMeta & {
   id: number;
   building: number;
   title: string;

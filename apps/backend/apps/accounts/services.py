@@ -31,4 +31,4 @@ def register_user(*, email: str, phone_number: str, password: str, first_name: s
         defaults=profile_data,
     )
 
-    return user
+    return User.objects.select_related("profile", "owner_verification").get(pk=user.pk)

@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models import Q
 from rest_framework import serializers
 
@@ -54,7 +55,7 @@ class RegisterSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     last_name = serializers.CharField(max_length=150, required=False, allow_blank=True)
     role = serializers.ChoiceField(choices=[UserRole.USER, UserRole.OWNER], default=UserRole.USER)
-    preferred_language = serializers.CharField(max_length=16, required=False, default="en")
+    preferred_language = serializers.CharField(max_length=16, required=False, default=settings.UYTOP_DEFAULT_LANGUAGE)
     city = serializers.CharField(max_length=128, required=False, allow_blank=True, default="")
     district = serializers.CharField(max_length=128, required=False, allow_blank=True, default="")
 
@@ -70,7 +71,7 @@ class RegisterSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         profile_data = {
-            "preferred_language": validated_data.pop("preferred_language", "en"),
+            "preferred_language": validated_data.pop("preferred_language", settings.UYTOP_DEFAULT_LANGUAGE),
             "city": validated_data.pop("city", ""),
             "district": validated_data.pop("district", ""),
         }

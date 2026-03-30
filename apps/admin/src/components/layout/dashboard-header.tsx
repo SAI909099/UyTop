@@ -1,15 +1,21 @@
+import type { ReactNode } from 'react';
+
 type DashboardHeaderProps = {
   eyebrow: string;
   title: string;
   description: string;
+  actions?: ReactNode;
 };
 
-export function DashboardHeader({ eyebrow, title, description }: DashboardHeaderProps) {
+export function DashboardHeader({ eyebrow, title, description, actions }: DashboardHeaderProps) {
   return (
-    <header style={{ display: 'grid', gap: '10px' }}>
-      <p style={{ margin: 0, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{eyebrow}</p>
-      <h1 style={{ margin: 0, fontSize: '2.4rem' }}>{title}</h1>
-      <p style={{ margin: 0, maxWidth: '720px', color: 'var(--text-muted)' }}>{description}</p>
+    <header className="dashboard-header">
+      <div className="dashboard-header-copy">
+        <p className="dashboard-header-eyebrow">{eyebrow}</p>
+        <h1>{title}</h1>
+        <p>{description}</p>
+      </div>
+      {actions ? <div className="dashboard-header-actions">{actions}</div> : null}
     </header>
   );
 }

@@ -14,6 +14,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.locale import get_request_language
+from apps.common.translation import build_localized_text_query, get_localized_value
 from apps.catalog.models import (
     Apartment,
     ApartmentAvailabilityStatus,
@@ -45,11 +47,17 @@ from .serializers import (
 DELIVERY_YEAR_PATTERN = r"(19|20)\d{2}"
 
 
+def has_admin_catalog_access(request) -> bool:
+    return request.headers.get("X-Admin-Bypass", "").lower() == "true" or (
+        request.user.is_authenticated and getattr(request.user, "is_admin_role", False)
+    )
+
+
 def company_queryset():
     return DeveloperCompany.objects.annotate(
         project_count=Count("projects", distinct=True),
         apartment_count=Count("projects__buildings__apartments", distinct=True),
-    ).prefetch_related("projects")
+    ).prefetch_related("projects").order_by("name", "id")
 
 
 def project_queryset():
@@ -121,7 +129,7 @@ class CompanyListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = company_queryset()
-        if self.request.method == "GET":
+        if self.request.method == "GET" and not has_admin_catalog_access(self.request):
             return queryset.filter(is_active=True)
         return queryset
 
@@ -142,7 +150,7 @@ class CompanyDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPIVi
 
     def get_queryset(self):
         queryset = company_queryset()
-        if self.request.method == "GET":
+        if self.request.method == "GET" and not has_admin_catalog_access(self.request):
             return queryset.filter(is_active=True)
         return queryset
 
@@ -189,11 +197,12 @@ class ProjectListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
 
         address_query = (params.get("address_query") or "").strip()
         if address_query:
+            language = get_request_language(self.request)
             queryset = queryset.filter(
-                Q(name__icontains=address_query)
-                | Q(headline__icontains=address_query)
-                | Q(address__icontains=address_query)
-                | Q(location_label__icontains=address_query)
+                build_localized_text_query("name", language, address_query)
+                | build_localized_text_query("headline", language, address_query)
+                | build_localized_text_query("address", language, address_query)
+                | build_localized_text_query("location_label", language, address_query)
                 | Q(city__name__icontains=address_query)
                 | Q(district__name__icontains=address_query)
             )
@@ -218,7 +227,7 @@ class ProjectListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
             )
             queryset = queryset.annotate(has_room_match=Exists(matching_apartments)).filter(has_room_match=True)
 
-        if self.request.method == "GET":
+        if self.request.method == "GET" and not has_admin_catalog_access(self.request):
             queryset = queryset.filter(is_active=True, company__is_active=True)
 
         sort = params.get("sort", "featured")
@@ -256,7 +265,7 @@ class ProjectDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPIVi
 
     def get_queryset(self):
         queryset = project_queryset()
-        if self.request.method == "GET":
+        if self.request.method == "GET" and not has_admin_catalog_access(self.request):
             return queryset.filter(is_active=True, company__is_active=True)
         return queryset
 
@@ -280,7 +289,7 @@ class BuildingListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
         project_id = self.request.query_params.get("project")
         if project_id:
             queryset = queryset.filter(project_id=project_id)
-        if self.request.method == "GET":
+        if self.request.method == "GET" and not has_admin_catalog_access(self.request):
             return queryset.filter(is_active=True, project__is_active=True, project__company__is_active=True)
         return queryset
 
@@ -301,7 +310,7 @@ class BuildingDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPIV
 
     def get_queryset(self):
         queryset = building_queryset()
-        if self.request.method == "GET":
+        if self.request.method == "GET" and not has_admin_catalog_access(self.request):
             return queryset.filter(is_active=True, project__is_active=True, project__company__is_active=True)
         return queryset
 
@@ -321,9 +330,7 @@ class ApartmentListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
         return [AllowAny()]
 
     def get_queryset(self):
-        include_private = self.request.headers.get("X-Admin-Bypass", "").lower() == "true" or (
-            self.request.user.is_authenticated and getattr(self.request.user, "is_admin_role", False)
-        )
+        include_private = has_admin_catalog_access(self.request)
         queryset = apartment_queryset(include_private=include_private)
         params = self.request.query_params
 
@@ -370,16 +377,17 @@ class ApartmentListCreateView(ReadAfterWriteMixin, generics.ListCreateAPIView):
 
         address_query = (params.get("address_query") or "").strip()
         if address_query:
+            language = get_request_language(self.request)
             queryset = queryset.filter(
-                Q(title__icontains=address_query)
+                build_localized_text_query("title", language, address_query)
                 | Q(apartment_number__icontains=address_query)
-                | Q(address__icontains=address_query)
+                | build_localized_text_query("address", language, address_query)
                 | Q(city__name__icontains=address_query)
                 | Q(district__name__icontains=address_query)
-                | Q(building__name__icontains=address_query)
-                | Q(building__project__name__icontains=address_query)
-                | Q(building__project__location_label__icontains=address_query)
-                | Q(building__project__address__icontains=address_query)
+                | build_localized_text_query("building__name", language, address_query)
+                | build_localized_text_query("building__project__name", language, address_query)
+                | build_localized_text_query("building__project__location_label", language, address_query)
+                | build_localized_text_query("building__project__address", language, address_query)
             )
 
         room_values = sorted(
@@ -421,9 +429,7 @@ class ApartmentDetailView(ReadAfterWriteMixin, generics.RetrieveUpdateDestroyAPI
         return [AllowAny()]
 
     def get_queryset(self):
-        include_private = self.request.headers.get("X-Admin-Bypass", "").lower() == "true" or (
-            self.request.user.is_authenticated and getattr(self.request.user, "is_admin_role", False)
-        )
+        include_private = has_admin_catalog_access(self.request)
         return apartment_queryset(include_private=include_private)
 
     def get_serializer_class(self):
@@ -475,11 +481,18 @@ class CatalogLookupsView(APIView):
         company_id = request.query_params.get("company")
         project_id = request.query_params.get("project")
         city_id = request.query_params.get("city")
+        language = get_request_language(request)
+
+        include_private = has_admin_catalog_access(request)
 
         active_projects = ResidentialProject.objects.filter(is_active=True, company__is_active=True)
-        companies = DeveloperCompany.objects.filter(is_active=True).values("id", "name", "slug")
-        projects = active_projects.values("id", "name", "slug", "company_id")
-        buildings = ProjectBuilding.objects.filter(is_active=True, project__is_active=True).values("id", "name", "slug", "project_id", "code")
+        companies = DeveloperCompany.objects.all() if include_private else DeveloperCompany.objects.filter(is_active=True)
+        projects = ResidentialProject.objects.all() if include_private else active_projects
+        buildings = (
+            ProjectBuilding.objects.all()
+            if include_private
+            else ProjectBuilding.objects.filter(is_active=True, project__is_active=True, project__company__is_active=True)
+        )
         cities = LocationCity.objects.filter(is_active=True).values("id", "name", "slug")
         districts = LocationDistrict.objects.filter(is_active=True).values("id", "name", "slug", "city_id")
 
@@ -491,26 +504,34 @@ class CatalogLookupsView(APIView):
         if city_id:
             districts = districts.filter(city_id=city_id)
 
+        project_metrics_source = projects if include_private else active_projects
+
         delivery_years = sorted(
             {
                 int(match.group())
-                for delivery_window in active_projects.values_list("delivery_window", flat=True)
+                for delivery_window in project_metrics_source.values_list("delivery_window", flat=True)
                 for match in re.finditer(DELIVERY_YEAR_PATTERN, delivery_window or "")
             }
         )
-        project_price_bounds = active_projects.aggregate(
+        project_price_bounds = project_metrics_source.aggregate(
             min_price=Min("starting_price"),
             max_price=Max("starting_price"),
         )
         project_room_counts = sorted(
             Apartment.objects.filter(
-                building__project__in=active_projects,
-                building__is_active=True,
-                is_public=True,
-                status__in=[
-                    ApartmentAvailabilityStatus.AVAILABLE,
-                    ApartmentAvailabilityStatus.RESERVED,
-                ],
+                building__project__in=project_metrics_source,
+                **(
+                    {}
+                    if include_private
+                    else {
+                        "building__is_active": True,
+                        "is_public": True,
+                        "status__in": [
+                            ApartmentAvailabilityStatus.AVAILABLE,
+                            ApartmentAvailabilityStatus.RESERVED,
+                        ],
+                    }
+                ),
             )
             .values_list("rooms", flat=True)
             .distinct()
@@ -518,9 +539,29 @@ class CatalogLookupsView(APIView):
 
         return Response(
             {
-                "companies": list(companies),
-                "projects": list(projects),
-                "buildings": list(buildings),
+                "companies": [
+                    {"id": company.id, "name": get_localized_value(company, "name", language), "slug": company.slug}
+                    for company in companies
+                ],
+                "projects": [
+                    {
+                        "id": project.id,
+                        "name": get_localized_value(project, "name", language),
+                        "slug": project.slug,
+                        "company_id": project.company_id,
+                    }
+                    for project in projects
+                ],
+                "buildings": [
+                    {
+                        "id": building.id,
+                        "name": get_localized_value(building, "name", language),
+                        "slug": building.slug,
+                        "project_id": building.project_id,
+                        "code": building.code,
+                    }
+                    for building in buildings
+                ],
                 "cities": list(cities),
                 "districts": list(districts),
                 "project_delivery_years": delivery_years,

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 
+import { buildLocalizedPath, type LocaleCode } from '@/lib/i18n';
 import { formatCurrency, formatLabel, formatRooms } from '@/lib/utils/format';
 import type { PublicApartmentDetail } from '@/types/home';
 
@@ -16,6 +17,7 @@ export type ComparisonResidence = {
 };
 
 type ApartmentComparisonMatrixProps = {
+  locale: LocaleCode;
   residences: ComparisonResidence[];
   notices: string[];
 };
@@ -181,7 +183,7 @@ const MATRIX_ROWS: MatrixRow[] = [
   },
 ];
 
-export function ApartmentComparisonMatrix({ residences, notices }: ApartmentComparisonMatrixProps) {
+export function ApartmentComparisonMatrix({ locale, residences, notices }: ApartmentComparisonMatrixProps) {
   const [sort, setSort] = useState<ComparisonSort>('best_value');
   const sortedResidences = useMemo(() => sortResidences(residences, sort), [residences, sort]);
   const hasMixedCurrencies = new Set(sortedResidences.map((residence) => residence.apartment.currency)).size > 1;
@@ -216,13 +218,13 @@ export function ApartmentComparisonMatrix({ residences, notices }: ApartmentComp
             </p>
 
             <div className="hero-actions">
-              <a href="/map" className="button button-primary">
+              <a href={buildLocalizedPath(locale, '/map')} className="button button-primary">
                 Open live map
               </a>
-              <a href="/residences" className="button button-secondary">
+              <a href={buildLocalizedPath(locale, '/residences')} className="button button-secondary">
                 Browse residences
               </a>
-              <a href="/" className="button button-ghost">
+              <a href={buildLocalizedPath(locale, '/')} className="button button-ghost">
                 Back to homepage
               </a>
             </div>
@@ -346,7 +348,10 @@ export function ApartmentComparisonMatrix({ residences, notices }: ApartmentComp
 
                       <div className="compare-matrix-column-actions">
                         {isBestValue ? <span className="compare-matrix-best-pill">Best value / sqm</span> : null}
-                        <a href={`/apartments/${residence.apartment.slug}`} className="button button-secondary">
+                        <a
+                          href={buildLocalizedPath(locale, `/apartments/${residence.apartment.slug}`)}
+                          className="button button-secondary"
+                        >
                           View apartment
                         </a>
                       </div>

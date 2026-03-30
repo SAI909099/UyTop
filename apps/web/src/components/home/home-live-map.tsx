@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 
 import { getPublicApartmentDetail } from "@/lib/api/public";
+import { buildLocalizedPath, type LocaleCode } from "@/lib/i18n";
 import { formatCompactCurrency, formatCurrency, formatLabel, formatRooms } from "@/lib/utils/format";
 import type { PublicApartmentDetail, PublicMapApartment } from "@/types/home";
 
 type HomeLiveMapProps = {
   items: PublicMapApartment[];
+  locale: LocaleCode;
   variant?: "preview" | "fullscreen";
   autoLocate?: boolean;
 };
@@ -60,6 +62,198 @@ const DEFAULT_CENTER: [number, number] = [41.311081, 69.240562];
 const DEFAULT_CITY_NAME = "Tashkent";
 const DISTRICT_VIEW_MAX_ZOOM = 11;
 const EXACT_MARKER_ZOOM_THRESHOLD = 14;
+
+type HomeLiveMapCopy = {
+  location: string;
+  visibleHomes: (count: number) => string;
+  zoomIn: string;
+  zoomOut: string;
+  showMap: string;
+  locating: string;
+  nearMe: string;
+  districtTotals: string;
+  nearbyHomes: string;
+  exactHomes: string;
+  districtTotalsFirst: string;
+  nearbyHomesWithin: (km: number) => string;
+  exactHomesWithPhotos: string;
+  zoomInForNearbyAreas: string;
+  zoomInForExactHomes: string;
+  previewTheCityHere: string;
+  clickAHomeToInspect: string;
+  openFullMap: string;
+  selectedResidence: string;
+  back: string;
+  viewPage: string;
+  more: string;
+  apartmentDetails: string;
+  closeApartmentDetails: string;
+  close: string;
+  loadingFullApartmentInformation: string;
+  couldNotLoadApartmentDetails: string;
+  retry: string;
+  developer: string;
+  locationField: string;
+  rooms: string;
+  size: string;
+  floor: string;
+  apartment: string;
+  address: string;
+  aboutThisApartment: string;
+  openResidencePage: string;
+  viewBuilding: string;
+  notPublished: string;
+  noAdditionalDescription: string;
+  findingLocation: string;
+  showingLocation: string;
+  locationDenied: string;
+  locationUnavailable: string;
+  locationUnsupported: string;
+};
+
+const homeLiveMapCopy: Record<LocaleCode, HomeLiveMapCopy> = {
+  uz: {
+    location: "Joylashuv",
+    visibleHomes: (count) => `${count} ta ko‘rinadigan uy`,
+    zoomIn: "Kattalashtirish",
+    zoomOut: "Kichraytirish",
+    showMap: "Xaritani ko‘rsatish",
+    locating: "Aniqlanmoqda",
+    nearMe: "Menga yaqin",
+    districtTotals: "Hududlar kesimi",
+    nearbyHomes: "Yaqin uylar",
+    exactHomes: "Aniq uylar",
+    districtTotalsFirst: "Avval hududlar kesimi",
+    nearbyHomesWithin: (km) => `${km} km atrofidagi uylar`,
+    exactHomesWithPhotos: "Rasmlar bilan aniq uylar",
+    zoomInForNearbyAreas: "Yaqin hududlar uchun kattalashtiring",
+    zoomInForExactHomes: "Aniq uylar uchun kattalashtiring",
+    previewTheCityHere: "Shaharni shu yerda ko‘ring",
+    clickAHomeToInspect: "Uy kartasini ochish uchun bosing",
+    openFullMap: "To‘liq xarita",
+    selectedResidence: "Tanlangan uy",
+    back: "Ortga",
+    viewPage: "Sahifani ochish",
+    more: "Batafsil",
+    apartmentDetails: "Kvartira tafsilotlari",
+    closeApartmentDetails: "Kvartira tafsilotlarini yopish",
+    close: "Yopish",
+    loadingFullApartmentInformation: "Kvartira haqidagi to‘liq ma’lumot yuklanmoqda…",
+    couldNotLoadApartmentDetails: "Kvartiraning qolgan ma’lumotlarini yuklab bo‘lmadi.",
+    retry: "Qayta urinish",
+    developer: "Developer",
+    locationField: "Joylashuv",
+    rooms: "Xonalar",
+    size: "Maydon",
+    floor: "Qavat",
+    apartment: "Kvartira",
+    address: "Manzil",
+    aboutThisApartment: "Ushbu kvartira haqida",
+    openResidencePage: "Uy sahifasi",
+    viewBuilding: "Binoni ko‘rish",
+    notPublished: "E’lon qilinmagan",
+    noAdditionalDescription: "Hozircha qo‘shimcha kvartira tavsifi e’lon qilinmagan.",
+    findingLocation: "Xaritada joriy joylashuvingiz qidirilmoqda…",
+    showingLocation: "Yaqin uylarni ko‘rishingiz uchun joriy joylashuvingiz ko‘rsatilmoqda.",
+    locationDenied: "Joylashuvga ruxsat o‘chiq. Brauzer sozlamalarida yoqing va yana urinib ko‘ring.",
+    locationUnavailable: "Joylashuvingizni hozir aniqlab bo‘lmadi. Birozdan keyin yana urinib ko‘ring.",
+    locationUnsupported: "Bu brauzer jonli xarita uchun joylashuvni qo‘llab-quvvatlamaydi.",
+  },
+  en: {
+    location: "Location",
+    visibleHomes: (count) => `${count} visible ${count === 1 ? "home" : "homes"}`,
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    showMap: "Show map",
+    locating: "Locating",
+    nearMe: "Near me",
+    districtTotals: "District totals",
+    nearbyHomes: "Nearby homes",
+    exactHomes: "Exact homes",
+    districtTotalsFirst: "District totals first",
+    nearbyHomesWithin: (km) => `Nearby homes within ${km} km`,
+    exactHomesWithPhotos: "Exact homes with photos",
+    zoomInForNearbyAreas: "Zoom in for nearby areas",
+    zoomInForExactHomes: "Zoom in for exact homes",
+    previewTheCityHere: "Preview the city here",
+    clickAHomeToInspect: "Click a home to inspect it",
+    openFullMap: "Open full map",
+    selectedResidence: "Selected residence",
+    back: "Back",
+    viewPage: "View page",
+    more: "More",
+    apartmentDetails: "Apartment details",
+    closeApartmentDetails: "Close apartment details",
+    close: "Close",
+    loadingFullApartmentInformation: "Loading the full apartment information…",
+    couldNotLoadApartmentDetails: "Couldn't load the rest of the apartment details.",
+    retry: "Retry",
+    developer: "Developer",
+    locationField: "Location",
+    rooms: "Rooms",
+    size: "Size",
+    floor: "Floor",
+    apartment: "Apartment",
+    address: "Address",
+    aboutThisApartment: "About this apartment",
+    openResidencePage: "Open residence page",
+    viewBuilding: "View building",
+    notPublished: "Not published",
+    noAdditionalDescription: "No additional apartment description has been published yet.",
+    findingLocation: "Finding your current location on the map…",
+    showingLocation: "Showing your current location so you can browse homes nearby.",
+    locationDenied: "Location access is off. Enable it in your browser settings and try Near me again.",
+    locationUnavailable: "Your location could not be detected right now. Try Near me again in a moment.",
+    locationUnsupported: "This browser does not support location access for the live map.",
+  },
+  ru: {
+    location: "Локация",
+    visibleHomes: (count) => `${count} ${count === 1 ? "объект" : count < 5 ? "объекта" : "объектов"} в зоне видимости`,
+    zoomIn: "Увеличить",
+    zoomOut: "Уменьшить",
+    showMap: "Показать карту",
+    locating: "Определение",
+    nearMe: "Рядом со мной",
+    districtTotals: "Итоги по районам",
+    nearbyHomes: "Рядом",
+    exactHomes: "Точные объекты",
+    districtTotalsFirst: "Сначала итоги по районам",
+    nearbyHomesWithin: (km) => `Квартиры рядом в радиусе ${km} км`,
+    exactHomesWithPhotos: "Точные объекты с фото",
+    zoomInForNearbyAreas: "Приблизьте для соседних районов",
+    zoomInForExactHomes: "Приблизьте для точных объектов",
+    previewTheCityHere: "Просматривайте город здесь",
+    clickAHomeToInspect: "Нажмите на объект, чтобы открыть детали",
+    openFullMap: "Открыть карту",
+    selectedResidence: "Выбранная квартира",
+    back: "Назад",
+    viewPage: "Открыть страницу",
+    more: "Подробнее",
+    apartmentDetails: "Детали квартиры",
+    closeApartmentDetails: "Закрыть детали квартиры",
+    close: "Закрыть",
+    loadingFullApartmentInformation: "Загрузка полной информации о квартире…",
+    couldNotLoadApartmentDetails: "Не удалось загрузить остальные данные квартиры.",
+    retry: "Повторить",
+    developer: "Застройщик",
+    locationField: "Локация",
+    rooms: "Комнаты",
+    size: "Площадь",
+    floor: "Этаж",
+    apartment: "Квартира",
+    address: "Адрес",
+    aboutThisApartment: "Об этой квартире",
+    openResidencePage: "Страница квартиры",
+    viewBuilding: "Открыть дом",
+    notPublished: "Не опубликовано",
+    noAdditionalDescription: "Дополнительное описание квартиры пока не опубликовано.",
+    findingLocation: "Определяем ваше текущее местоположение на карте…",
+    showingLocation: "Показываем ваше местоположение, чтобы вы могли смотреть квартиры рядом.",
+    locationDenied: "Доступ к геолокации выключен. Включите его в настройках браузера и попробуйте снова.",
+    locationUnavailable: "Сейчас не удалось определить ваше местоположение. Попробуйте ещё раз чуть позже.",
+    locationUnsupported: "Этот браузер не поддерживает геолокацию для живой карты.",
+  },
+};
 
 let leafletPromise: Promise<typeof import("leaflet")> | null = null;
 
@@ -349,46 +543,46 @@ function getLocationLabel(detail: PublicApartmentDetail | null) {
   return district ? `${district}, ${city}` : city;
 }
 
-function getLocationFeedback(status: LocationStatus) {
+function getLocationFeedback(status: LocationStatus, copy: HomeLiveMapCopy) {
   if (status === "requesting") {
     return {
       tone: "neutral",
-      message: "Finding your current location on the map…",
+      message: copy.findingLocation,
     };
   }
 
   if (status === "ready") {
     return {
       tone: "success",
-      message: "Showing your current location so you can browse homes nearby.",
+      message: copy.showingLocation,
     };
   }
 
   if (status === "denied") {
     return {
       tone: "error",
-      message: "Location access is off. Enable it in your browser settings and try Near me again.",
+      message: copy.locationDenied,
     };
   }
 
   if (status === "unavailable") {
     return {
       tone: "error",
-      message: "Your location could not be detected right now. Try Near me again in a moment.",
+      message: copy.locationUnavailable,
     };
   }
 
   if (status === "unsupported") {
     return {
       tone: "error",
-      message: "This browser does not support location access for the live map.",
+      message: copy.locationUnsupported,
     };
   }
 
   return null;
 }
 
-export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: HomeLiveMapProps) {
+export function HomeLiveMap({ items, locale, variant = "preview", autoLocate = false }: HomeLiveMapProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -418,11 +612,13 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
   const canLocateUser = variant === "fullscreen";
   const fitMaxZoom = isPreview ? 13 : 14;
   const mapZoom = mapViewport?.zoom ?? DISTRICT_VIEW_MAX_ZOOM;
+  const copy = homeLiveMapCopy[locale];
+  const mapPath = buildLocalizedPath(locale, "/map");
   const aggregationMode = apartments.length > 1 ? getAggregationMode(mapZoom) : "exact";
   const nearbyRadiusMeters = aggregationMode === "radius" ? getNearbyRadiusMeters(mapZoom) : null;
   const detailImages = selectedApartment ? getDetailImages(selectedDetail, selectedApartment) : [];
   const detailLeadImage = selectedApartment ? getLeadImage(selectedDetail, selectedApartment) : null;
-  const locationFeedback = canLocateUser ? getLocationFeedback(locationStatus) : null;
+  const locationFeedback = canLocateUser ? getLocationFeedback(locationStatus, copy) : null;
 
   const handleShowMap = () => {
     const map = leafletMapRef.current;
@@ -798,8 +994,7 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
   const detailPaymentOptions = selectedApartment
     ? selectedDetail?.payment_options ?? selectedApartment.payment_options
     : [];
-  const detailDescription =
-    selectedDetail?.description?.trim() || "No additional apartment description has been published yet.";
+  const detailDescription = selectedDetail?.description?.trim() || copy.noAdditionalDescription;
 
   return (
     <div className={`home-map-shell home-map-shell-${variant}${detailOpen ? " home-map-shell-detail-open" : ""}`}>
@@ -809,18 +1004,20 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
 
         <div className="home-map-status-bar">
           <span className="home-map-status-pill">
-            {aggregationMode === "district" ? "District totals" : aggregationMode === "radius" ? "Nearby homes" : "Exact homes"}
+            {aggregationMode === "district"
+              ? copy.districtTotals
+              : aggregationMode === "radius"
+                ? copy.nearbyHomes
+                : copy.exactHomes}
           </span>
-          <span className="home-map-status-pill">
-            {visibleItems.length} visible {visibleItems.length === 1 ? "home" : "homes"}
-          </span>
+          <span className="home-map-status-pill">{copy.visibleHomes(visibleItems.length)}</span>
         </div>
 
         <div className="home-map-controls">
           <button
             type="button"
             className="home-map-control-button"
-            aria-label="Zoom in"
+            aria-label={copy.zoomIn}
             onClick={() => leafletMapRef.current?.zoomIn()}
           >
             +
@@ -828,7 +1025,7 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
           <button
             type="button"
             className="home-map-control-button"
-            aria-label="Zoom out"
+            aria-label={copy.zoomOut}
             onClick={() => leafletMapRef.current?.zoomOut()}
           >
             -
@@ -838,7 +1035,7 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
             className="home-map-control-button home-map-control-button-wide"
             onClick={handleShowMap}
           >
-            Show map
+            {copy.showMap}
           </button>
           {canLocateUser ? (
             <button
@@ -847,7 +1044,7 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
               onClick={requestUserLocation}
               disabled={locationStatus === "requesting"}
             >
-              {locationStatus === "requesting" ? "Locating" : "Near me"}
+              {locationStatus === "requesting" ? copy.locating : copy.nearMe}
             </button>
           ) : null}
         </div>
@@ -857,7 +1054,7 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
             className={`home-map-location-feedback home-map-location-feedback-${locationFeedback.tone}`}
             aria-live="polite"
           >
-            <strong>Location</strong>
+            <strong>{copy.location}</strong>
             <p>{locationFeedback.message}</p>
           </div>
         ) : null}
@@ -866,20 +1063,20 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
           <div className={`home-map-hint-bar${isPreview ? "" : " home-map-hint-bar-fullscreen"}`}>
             <span className="home-map-hint-pill">
               {aggregationMode === "district"
-                ? "District totals first"
+                ? copy.districtTotalsFirst
                 : aggregationMode === "radius"
-                  ? `Nearby homes within ${Math.round((nearbyRadiusMeters ?? 2000) / 1000)} km`
-                  : "Exact homes with photos"}
+                  ? copy.nearbyHomesWithin(Math.round((nearbyRadiusMeters ?? 2000) / 1000))
+                  : copy.exactHomesWithPhotos}
             </span>
             <span className="home-map-hint-pill">
-              {aggregationMode === "district" ? "Zoom in for nearby areas" : "Zoom in for exact homes"}
+              {aggregationMode === "district" ? copy.zoomInForNearbyAreas : copy.zoomInForExactHomes}
             </span>
             <span className="home-map-hint-pill">
-              {isPreview ? "Preview the city here" : "Click a home to inspect it"}
+              {isPreview ? copy.previewTheCityHere : copy.clickAHomeToInspect}
             </span>
             {isPreview ? (
-              <a href="/map" className="home-map-hint-link">
-                Open full map
+              <a href={mapPath} className="home-map-hint-link">
+                {copy.openFullMap}
               </a>
             ) : null}
           </div>
@@ -895,7 +1092,7 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
               )}
               <div className="home-map-selected-media-overlay" />
               <div className="home-map-selected-media-topline">
-                <p className="section-label">Selected residence</p>
+                <p className="section-label">{copy.selectedResidence}</p>
                 <strong>{formatCurrency(selectedApartment.price, selectedApartment.currency)}</strong>
               </div>
             </div>
@@ -930,10 +1127,13 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
                       setSelectedId(null);
                     }}
                   >
-                    Back
+                    {copy.back}
                   </button>
-                  <a href={`/apartments/${selectedApartment.slug}`} className="home-map-inline-button">
-                    View page
+                  <a
+                    href={buildLocalizedPath(locale, `/apartments/${selectedApartment.slug}`)}
+                    className="home-map-inline-button"
+                  >
+                    {copy.viewPage}
                   </a>
                   <button
                     type="button"
@@ -946,7 +1146,7 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
                       }
                     }}
                   >
-                    More
+                    {copy.more}
                   </button>
                 </div>
                 <small>{getLocationLabel(selectedDetail)}</small>
@@ -960,7 +1160,7 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
             <button
               type="button"
               className="home-map-detail-backdrop"
-              aria-label="Close apartment details"
+              aria-label={copy.closeApartmentDetails}
               onClick={() => setDetailOpen(false)}
             />
 
@@ -972,7 +1172,7 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
             >
               <div className="home-map-detail-header">
                 <div>
-                  <p className="section-label">Apartment details</p>
+                  <p className="section-label">{copy.apartmentDetails}</p>
                   <h3 id={`home-map-detail-title-${selectedApartment.id}`}>
                     {selectedDetail?.title ?? selectedApartment.title}
                   </h3>
@@ -984,10 +1184,10 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
                 <button
                   type="button"
                   className="home-map-detail-close"
-                  aria-label="Close apartment details"
+                  aria-label={copy.closeApartmentDetails}
                   onClick={() => setDetailOpen(false)}
                 >
-                  Close
+                  {copy.close}
                 </button>
               </div>
 
@@ -1017,12 +1217,12 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
               </div>
 
               {detailStatus === "loading" ? (
-                <p className="home-map-detail-feedback">Loading the full apartment information…</p>
+                <p className="home-map-detail-feedback">{copy.loadingFullApartmentInformation}</p>
               ) : null}
 
               {detailStatus === "error" ? (
                 <div className="home-map-detail-feedback home-map-detail-feedback-error">
-                  <p>Couldn&apos;t load the rest of the apartment details.</p>
+                  <p>{copy.couldNotLoadApartmentDetails}</p>
                   <button
                     type="button"
                     className="home-map-inline-button"
@@ -1032,40 +1232,40 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
                       setDetailRequestKey((current) => current + 1);
                     }}
                   >
-                    Retry
+                    {copy.retry}
                   </button>
                 </div>
               ) : null}
 
               <div className="home-map-detail-grid">
                 <div>
-                  <span>Developer</span>
+                  <span>{copy.developer}</span>
                   <strong>{detailCompanyName}</strong>
                 </div>
                 <div>
-                  <span>Location</span>
+                  <span>{copy.locationField}</span>
                   <strong>{getLocationLabel(selectedDetail)}</strong>
                 </div>
                 <div>
-                  <span>Rooms</span>
+                  <span>{copy.rooms}</span>
                   <strong>{formatRooms(detailRooms)}</strong>
                 </div>
                 <div>
-                  <span>Size</span>
+                  <span>{copy.size}</span>
                   <strong>{detailSize} sqm</strong>
                 </div>
                 <div>
-                  <span>Floor</span>
-                  <strong>{selectedDetail?.floor ?? "Not published"}</strong>
+                  <span>{copy.floor}</span>
+                  <strong>{selectedDetail?.floor ?? copy.notPublished}</strong>
                 </div>
                 <div>
-                  <span>Apartment</span>
-                  <strong>{selectedDetail?.apartment_number ?? "Not published"}</strong>
+                  <span>{copy.apartment}</span>
+                  <strong>{selectedDetail?.apartment_number ?? copy.notPublished}</strong>
                 </div>
               </div>
 
               <div className="home-map-detail-address">
-                <span>Address</span>
+                <span>{copy.address}</span>
                 <strong>{detailAddress}</strong>
               </div>
 
@@ -1078,19 +1278,25 @@ export function HomeLiveMap({ items, variant = "preview", autoLocate = false }: 
               ) : null}
 
               <div className="home-map-detail-description">
-                <h4>About this apartment</h4>
+                <h4>{copy.aboutThisApartment}</h4>
                 <p>{detailDescription}</p>
               </div>
 
               <div className="home-map-detail-actions">
-                <a href={`/apartments/${selectedApartment.slug}`} className="home-map-action-button">
-                  Open residence page
+                <a
+                  href={buildLocalizedPath(locale, `/apartments/${selectedApartment.slug}`)}
+                  className="home-map-action-button"
+                >
+                  {copy.openResidencePage}
                 </a>
                 <a
-                  href={`/projects/${selectedApartment.project_slug}/buildings/${selectedApartment.building_slug}`}
+                  href={buildLocalizedPath(
+                    locale,
+                    `/projects/${selectedApartment.project_slug}/buildings/${selectedApartment.building_slug}`,
+                  )}
                   className="home-map-inline-button"
                 >
-                  View building
+                  {copy.viewBuilding}
                 </a>
               </div>
             </aside>

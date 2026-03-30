@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { createApartment, updateApartment, uploadCatalogImage } from '@/lib/api/catalog';
+import { createApartment, deleteApartment, updateApartment, uploadCatalogImage } from '@/lib/api/catalog';
+import { adminDictionary, getBrowserLocale, SUPPORTED_LOCALES, type LocaleCode } from '@/lib/i18n';
 import type {
   BuildingLookupOption,
   CatalogApartment,
@@ -10,12 +11,15 @@ import type {
   CatalogImageUpload,
   LookupOption,
   PaymentOptionLookup,
+  TranslationPayload,
 } from '@/types/api';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 import { GoogleMapPicker } from './google-map-picker';
+import { TranslationEditor } from './translation-editor';
+import { createEmptyTranslations, getSourceFieldValue, pickTranslations } from './translation-utils';
 
 type ApartmentManagerProps = {
   apartments: CatalogApartment[];
@@ -28,6 +32,8 @@ type ApartmentManagerProps = {
 
 type ApartmentFormState = {
   selectedSlug: string;
+  source_language: LocaleCode;
+  translations: TranslationPayload;
   building_id: string;
   title: string;
   apartment_number: string;
@@ -53,6 +59,12 @@ type ApartmentFormState = {
 type FileUploadState = {
   files: File[];
 };
+
+const TRANSLATION_FIELDS = [
+  { name: 'title', label: 'Apartment title' },
+  { name: 'description', label: 'Description', rows: 4 },
+  { name: 'address', label: 'Address' },
+] as const;
 
 function buildEmptyPaymentState(options: PaymentOptionLookup[]) {
   return Object.fromEntries(options.map((option) => [option.value, '']));
@@ -86,18 +98,11 @@ function buildPaymentSelection(options: PaymentOptionLookup[], apartment: Catalo
   return base;
 }
 
-export function ApartmentManager({
-  apartments,
-  buildings,
-  cities,
-  districts,
-  paymentOptions,
-  statuses,
-}: ApartmentManagerProps) {
-  const [items, setItems] = useState(apartments);
-  const [files, setFiles] = useState<FileUploadState>({ files: [] });
-  const [form, setForm] = useState<ApartmentFormState>({
+function buildEmptyState(paymentOptions: PaymentOptionLookup[]): ApartmentFormState {
+  return {
     selectedSlug: '',
+    source_language: 'uz',
+    translations: createEmptyTranslations(TRANSLATION_FIELDS.map((field) => field.name)),
     building_id: '',
     title: '',
     apartment_number: '',
@@ -118,9 +123,23 @@ export function ApartmentManager({
     uploaded_images: [],
     selected_payment_types: buildEmptyPaymentSelection(paymentOptions),
     payment_options: buildEmptyPaymentState(paymentOptions),
-  });
+  };
+}
+
+export function ApartmentManager({
+  apartments,
+  buildings,
+  cities,
+  districts,
+  paymentOptions,
+  statuses,
+}: ApartmentManagerProps) {
+  const [items, setItems] = useState(apartments);
+  const [files, setFiles] = useState<FileUploadState>({ files: [] });
+  const [form, setForm] = useState<ApartmentFormState>(() => buildEmptyState(paymentOptions));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const dictionary = adminDictionary[getBrowserLocale()];
 
   const selectedApartment = useMemo(
     () => items.find((item) => item.slug === form.selectedSlug) ?? null,
@@ -132,31 +151,36 @@ export function ApartmentManager({
     [districts, form.city_id],
   );
 
+  const manualImageUrls = useMemo(
+    () =>
+      form.image_urls_text
+        .split('\n')
+        .map((value) => value.trim())
+        .filter(Boolean),
+    [form.image_urls_text],
+  );
+
+  const pendingFilePreviews = useMemo(
+    () =>
+      files.files.map((file, index) => ({
+        id: `${file.name}-${file.size}-${index}`,
+        name: file.name,
+        url: URL.createObjectURL(file),
+      })),
+    [files.files],
+  );
+
+  useEffect(() => {
+    return () => {
+      for (const preview of pendingFilePreviews) {
+        URL.revokeObjectURL(preview.url);
+      }
+    };
+  }, [pendingFilePreviews]);
+
   function hydrate(apartment: CatalogApartment | null) {
     if (!apartment) {
-      setForm({
-        selectedSlug: '',
-        building_id: '',
-        title: '',
-        apartment_number: '',
-        description: '',
-        status: 'draft',
-        is_public: false,
-        price: '',
-        currency: 'USD',
-        rooms: '',
-        size_sqm: '',
-        floor: '',
-        address: '',
-        city_id: '',
-        district_id: '',
-        latitude: '41.311081',
-        longitude: '69.240562',
-        image_urls_text: '',
-        uploaded_images: [],
-        selected_payment_types: buildEmptyPaymentSelection(paymentOptions),
-        payment_options: buildEmptyPaymentState(paymentOptions),
-      });
+      setForm(buildEmptyState(paymentOptions));
       setFiles({ files: [] });
       return;
     }
@@ -168,10 +192,12 @@ export function ApartmentManager({
 
     setForm({
       selectedSlug: apartment.slug,
+      source_language: apartment.source_language,
+      translations: pickTranslations(apartment, TRANSLATION_FIELDS.map((field) => field.name)),
       building_id: String(apartment.building),
-      title: apartment.title,
+      title: getSourceFieldValue(apartment, 'title'),
       apartment_number: apartment.apartment_number,
-      description: apartment.description ?? '',
+      description: getSourceFieldValue(apartment, 'description'),
       status: apartment.status,
       is_public: apartment.is_public,
       price: apartment.price,
@@ -179,7 +205,7 @@ export function ApartmentManager({
       rooms: String(apartment.rooms),
       size_sqm: apartment.size_sqm,
       floor: String(apartment.floor),
-      address: apartment.address,
+      address: getSourceFieldValue(apartment, 'address'),
       city_id: String(apartment.city.id),
       district_id: apartment.district ? String(apartment.district.id) : '',
       latitude: apartment.latitude,
@@ -198,6 +224,41 @@ export function ApartmentManager({
       uploaded.push(await uploadCatalogImage(file));
     }
     return uploaded;
+  }
+
+  function upsertApartment(saved: CatalogApartment) {
+    const nextItems = selectedApartment
+      ? items.map((item) => (item.slug === selectedApartment.slug ? saved : item))
+      : [saved, ...items];
+    setItems(nextItems);
+    hydrate(saved);
+  }
+
+  function removePendingFile(index: number) {
+    setFiles(({ files: currentFiles }) => ({
+      files: currentFiles.filter((_, fileIndex) => fileIndex !== index),
+    }));
+  }
+
+  function removeUploadedImage(index: number) {
+    setForm((current) => ({
+      ...current,
+      uploaded_images: current.uploaded_images.filter((_, imageIndex) => imageIndex !== index),
+    }));
+  }
+
+  function removeManualImage(index: number) {
+    setForm((current) => {
+      const nextUrls = current.image_urls_text
+        .split('\n')
+        .map((value) => value.trim())
+        .filter(Boolean)
+        .filter((_, urlIndex) => urlIndex !== index);
+      return {
+        ...current,
+        image_urls_text: nextUrls.join('\n'),
+      };
+    });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -220,6 +281,8 @@ export function ApartmentManager({
         .filter(Boolean);
 
       const payload = {
+        source_language: form.source_language,
+        translations: form.translations,
         building_id: Number(form.building_id),
         title: form.title,
         apartment_number: form.apartment_number,
@@ -245,13 +308,36 @@ export function ApartmentManager({
         ? await updateApartment(selectedApartment.slug, payload)
         : await createApartment(payload);
 
-      const nextItems = selectedApartment
-        ? items.map((item) => (item.slug === selectedApartment.slug ? saved : item))
-        : [saved, ...items];
-      setItems(nextItems);
-      hydrate(saved);
+      upsertApartment(saved);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Failed to save apartment.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!selectedApartment) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete ${selectedApartment.title}? This permanently removes the apartment and its images.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      await deleteApartment(selectedApartment.slug);
+      setItems(items.filter((item) => item.slug !== selectedApartment.slug));
+      hydrate(null);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Failed to delete apartment.');
     } finally {
       setSaving(false);
     }
@@ -280,7 +366,7 @@ export function ApartmentManager({
                 onClick={() => hydrate(apartment)}
               >
                 <strong>{apartment.title}</strong>
-                <span>{apartment.building_name ?? apartment.apartment_number} · {apartment.price} {apartment.currency}</span>
+                <span>{apartment.building_name ?? apartment.apartment_number} · {apartment.translation_state}</span>
               </button>
             ))}
           </div>
@@ -294,9 +380,35 @@ export function ApartmentManager({
               <p className="catalog-eyebrow">Create or edit</p>
               <h2>{selectedApartment ? `Edit ${selectedApartment.title}` : 'New apartment'}</h2>
             </div>
+            {selectedApartment ? (
+              <div className="catalog-inline-actions">
+                <Button type="button" onClick={handleDelete} disabled={saving} style={{ background: 'var(--danger)', color: '#fff' }}>
+                  Delete apartment
+                </Button>
+              </div>
+            ) : null}
           </div>
 
+          {selectedApartment ? (
+            <p className="catalog-status-pill">
+              {dictionary.translationState}: {selectedApartment.translation_state}
+            </p>
+          ) : null}
+
           <div className="catalog-two-column">
+            <label className="catalog-field">
+              <span>{dictionary.sourceLanguage}</span>
+              <select
+                value={form.source_language}
+                onChange={(event) => setForm({ ...form, source_language: event.target.value as LocaleCode })}
+              >
+                {SUPPORTED_LOCALES.map((locale) => (
+                  <option key={locale} value={locale}>
+                    {locale}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="catalog-field">
               <span>Building</span>
               <select value={form.building_id} onChange={(event) => setForm({ ...form, building_id: event.target.value })} required>
@@ -306,20 +418,16 @@ export function ApartmentManager({
                 ))}
               </select>
             </label>
-            <label className="catalog-field">
-              <span>Apartment title</span>
-              <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
-            </label>
           </div>
 
           <div className="catalog-three-column">
             <label className="catalog-field">
-              <span>Apartment number</span>
-              <input value={form.apartment_number} onChange={(event) => setForm({ ...form, apartment_number: event.target.value })} required />
+              <span>Apartment title</span>
+              <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
             </label>
             <label className="catalog-field">
-              <span>Floor</span>
-              <input value={form.floor} onChange={(event) => setForm({ ...form, floor: event.target.value })} required />
+              <span>Apartment number</span>
+              <input value={form.apartment_number} onChange={(event) => setForm({ ...form, apartment_number: event.target.value })} required />
             </label>
             <label className="catalog-field">
               <span>Status</span>
@@ -331,12 +439,11 @@ export function ApartmentManager({
             </label>
           </div>
 
-          <label className="catalog-field">
-            <span>Description</span>
-            <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={4} />
-          </label>
-
-          <div className="catalog-four-column">
+          <div className="catalog-three-column">
+            <label className="catalog-field">
+              <span>Floor</span>
+              <input value={form.floor} onChange={(event) => setForm({ ...form, floor: event.target.value })} required />
+            </label>
             <label className="catalog-field">
               <span>Price</span>
               <input value={form.price} onChange={(event) => setForm({ ...form, price: event.target.value })} required />
@@ -345,6 +452,14 @@ export function ApartmentManager({
               <span>Currency</span>
               <input value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value })} required />
             </label>
+          </div>
+
+          <label className="catalog-field">
+            <span>Description</span>
+            <textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} rows={4} />
+          </label>
+
+          <div className="catalog-four-column">
             <label className="catalog-field">
               <span>Rooms</span>
               <input value={form.rooms} onChange={(event) => setForm({ ...form, rooms: event.target.value })} required />
@@ -352,6 +467,14 @@ export function ApartmentManager({
             <label className="catalog-field">
               <span>Square meter</span>
               <input value={form.size_sqm} onChange={(event) => setForm({ ...form, size_sqm: event.target.value })} required />
+            </label>
+            <label className="catalog-field">
+              <span>Latitude</span>
+              <input value={form.latitude} onChange={(event) => setForm({ ...form, latitude: event.target.value })} required />
+            </label>
+            <label className="catalog-field">
+              <span>Longitude</span>
+              <input value={form.longitude} onChange={(event) => setForm({ ...form, longitude: event.target.value })} required />
             </label>
           </div>
 
@@ -381,17 +504,6 @@ export function ApartmentManager({
             <input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} required />
           </label>
 
-          <div className="catalog-two-column">
-            <label className="catalog-field">
-              <span>Latitude</span>
-              <input value={form.latitude} onChange={(event) => setForm({ ...form, latitude: event.target.value })} required />
-            </label>
-            <label className="catalog-field">
-              <span>Longitude</span>
-              <input value={form.longitude} onChange={(event) => setForm({ ...form, longitude: event.target.value })} required />
-            </label>
-          </div>
-
           <GoogleMapPicker
             latitude={form.latitude}
             longitude={form.longitude}
@@ -413,6 +525,7 @@ export function ApartmentManager({
               <input
                 type="file"
                 multiple
+                accept="image/*"
                 onChange={(event) => setFiles({ files: Array.from(event.target.files ?? []) })}
               />
               <small>{files.files.length} file(s) selected for upload</small>
@@ -421,6 +534,85 @@ export function ApartmentManager({
               ) : null}
             </label>
           </div>
+
+          {form.uploaded_images.length || pendingFilePreviews.length || manualImageUrls.length ? (
+            <div className="catalog-form-grid">
+              <p className="catalog-field-help">
+                Saved order is existing uploaded images, then new file uploads, then manual URLs. The first saved image becomes the primary image.
+              </p>
+
+              {form.uploaded_images.length ? (
+                <div className="catalog-media-grid">
+                  {form.uploaded_images.map((image, index) => (
+                    <div key={`${image.image_url}-${index}`} className="catalog-media-card">
+                      <img src={image.image_url} alt={`Stored apartment image ${index + 1}`} />
+                      <div className="catalog-media-card-copy">
+                        <strong>{index === 0 ? 'Current primary image' : `Stored image ${index + 1}`}</strong>
+                        <span>{image.image_url}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => removeUploadedImage(index)}
+                        style={{ background: 'var(--surface-muted)', color: 'var(--text)' }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {pendingFilePreviews.length ? (
+                <div className="catalog-media-grid">
+                  {pendingFilePreviews.map((file, index) => (
+                    <div key={file.id} className="catalog-media-card">
+                      <img src={file.url} alt={file.name} />
+                      <div className="catalog-media-card-copy">
+                        <strong>{file.name}</strong>
+                        <span>Uploads when you save</span>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => removePendingFile(index)}
+                        style={{ background: 'var(--surface-muted)', color: 'var(--text)' }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              {manualImageUrls.length ? (
+                <div className="catalog-media-grid">
+                  {manualImageUrls.map((imageUrl, index) => (
+                    <div key={`${imageUrl}-${index}`} className="catalog-media-card">
+                      <img src={imageUrl} alt={`Manual apartment image ${index + 1}`} />
+                      <div className="catalog-media-card-copy">
+                        <strong>{`Manual URL ${index + 1}`}</strong>
+                        <span>{imageUrl}</span>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => removeManualImage(index)}
+                        style={{ background: 'var(--surface-muted)', color: 'var(--text)' }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          <TranslationEditor
+            title={dictionary.manualTranslations}
+            sourceLanguage={form.source_language}
+            translations={form.translations}
+            fields={TRANSLATION_FIELDS.map((field) => ({ ...field }))}
+            onChange={(translations) => setForm({ ...form, translations })}
+          />
 
           <div className="catalog-payment-grid">
             {paymentOptions.map((option) => (

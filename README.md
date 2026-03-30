@@ -43,5 +43,6 @@ UyTop is a real estate platform repository with backend services, a premium publ
 - backend foundation: Django + DRF project structure with split settings
 - public web foundation: Next.js homepage with live map, company, and project surfaces
 - admin foundation: Next.js app shell with protected layout starter
+- multilingual content foundation: locale-aware catalog/listing APIs plus Uzbek, English, and Russian content storage for uploaded real-estate records
 
 Detailed environment and run instructions still need to be completed in the next phase.

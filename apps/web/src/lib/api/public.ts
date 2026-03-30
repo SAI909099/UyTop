@@ -1,4 +1,5 @@
 import { env } from '@/lib/config/env';
+import { DEFAULT_LOCALE, LOCALE_COOKIE_NAME, LOCALE_HEADER, normalizeLocale } from '@/lib/i18n';
 import type {
   PublicCompanyQuery,
   PublicCompanyDetail,
@@ -18,6 +19,7 @@ import type {
 } from '@/types/home';
 
 async function fetchPublicApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const locale = await resolveLocale();
   const target =
     typeof window === 'undefined'
       ? `${env.apiBaseUrl}${path}`
@@ -27,6 +29,7 @@ async function fetchPublicApi<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       Accept: 'application/json',
+      [LOCALE_HEADER]: locale,
       ...(init?.headers ?? {}),
     },
     cache: init?.cache ?? 'no-store',
@@ -37,6 +40,38 @@ async function fetchPublicApi<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return (await response.json()) as T;
+}
+
+function getBrowserCookie(name: string) {
+  if (typeof document === 'undefined') {
+    return '';
+  }
+
+  const value = document.cookie
+    .split('; ')
+    .find((item) => item.startsWith(`${name}=`))
+    ?.split('=')
+    .slice(1)
+    .join('=');
+
+  return value ? decodeURIComponent(value) : '';
+}
+
+async function resolveLocale() {
+  if (typeof window !== 'undefined') {
+    return normalizeLocale(getBrowserCookie(LOCALE_COOKIE_NAME));
+  }
+
+  const { cookies, headers } = await import('next/headers');
+  const headerStore = await headers();
+  const headerLocale = headerStore.get(LOCALE_HEADER);
+
+  if (headerLocale) {
+    return normalizeLocale(headerLocale);
+  }
+
+  const cookieStore = await cookies();
+  return normalizeLocale(cookieStore.get(LOCALE_COOKIE_NAME)?.value ?? DEFAULT_LOCALE);
 }
 
 function emptyResponse<T>(): PaginatedResponse<T> {

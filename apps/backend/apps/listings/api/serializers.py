@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.common.serializers import LocalizedModelSerializerMixin, TranslatableWriteSerializerMixin
+from apps.common.translation import apply_translatable_updates, queue_model_translation
 from apps.listings.models import Amenity, Listing, ListingImage
 from apps.listings.services import sync_listing_relations
 from apps.locations.models import LocationCity, LocationDistrict, NearbyPlace
@@ -35,7 +37,7 @@ class ListingImageSerializer(serializers.ModelSerializer):
         fields = ("id", "image_url", "storage_key", "sort_order", "is_primary")
 
 
-class ListingListSerializer(serializers.ModelSerializer):
+class ListingListSerializer(LocalizedModelSerializerMixin, serializers.ModelSerializer):
     city = LocationCitySerializer(read_only=True)
     district = LocationDistrictSerializer(read_only=True)
     images = ListingImageSerializer(many=True, read_only=True)
@@ -44,6 +46,7 @@ class ListingListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Listing
+        localized_fields = Listing.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "slug",
@@ -97,13 +100,14 @@ class ListingDetailSerializer(ListingListSerializer):
         )
 
 
-class MapListingPreviewSerializer(serializers.ModelSerializer):
+class MapListingPreviewSerializer(LocalizedModelSerializerMixin, serializers.ModelSerializer):
     city = serializers.CharField(source="city.name", read_only=True)
     district = serializers.CharField(source="district.name", read_only=True, default=None)
     primary_image = serializers.SerializerMethodField()
 
     class Meta:
         model = Listing
+        localized_fields = Listing.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "slug",
@@ -128,7 +132,7 @@ class MapListingPreviewSerializer(serializers.ModelSerializer):
         return obj.images.first().image_url if obj.images.exists() else None
 
 
-class ListingWriteSerializer(serializers.ModelSerializer):
+class ListingWriteSerializer(TranslatableWriteSerializerMixin, serializers.ModelSerializer):
     city_id = serializers.PrimaryKeyRelatedField(queryset=LocationCity.objects.all(), source="city")
     district_id = serializers.PrimaryKeyRelatedField(
         queryset=LocationDistrict.objects.all(),
@@ -151,6 +155,7 @@ class ListingWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Listing
+        localized_fields = Listing.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "purpose",
@@ -179,6 +184,8 @@ class ListingWriteSerializer(serializers.ModelSerializer):
             "expires_at",
             "amenity_ids",
             "image_urls",
+            "source_language",
+            "translations",
         )
         read_only_fields = ("id",)
 
@@ -212,21 +219,37 @@ class ListingWriteSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        source_language, translations, source_values = self.pop_translation_controls(validated_data)
         amenity_ids = validated_data.pop("amenity_ids", [])
         image_urls = validated_data.pop("image_urls", [])
         user = self.context["request"].user
         validated_data.setdefault("contact_phone", user.phone_number)
         if validated_data.get("allow_whatsapp"):
             validated_data.setdefault("contact_whatsapp", validated_data.get("contact_phone", user.phone_number))
-        listing = Listing.objects.create(owner=user, **validated_data)
+        listing = Listing(owner=user, **validated_data)
+        changed_fields = apply_translatable_updates(
+            listing,
+            source_language=source_language,
+            source_values=source_values,
+            translations_payload=translations,
+        )
+        listing.save()
         sync_listing_relations(listing=listing, amenity_ids=amenity_ids, image_urls=image_urls)
+        queue_model_translation(listing, changed_fields)
         return listing
 
     def update(self, instance, validated_data):
+        source_language, translations, source_values = self.pop_translation_controls(validated_data)
         amenity_ids = validated_data.pop("amenity_ids", None)
         image_urls = validated_data.pop("image_urls", None)
         for field, value in validated_data.items():
             setattr(instance, field, value)
+        changed_fields = apply_translatable_updates(
+            instance,
+            source_language=source_language,
+            source_values=source_values,
+            translations_payload=translations,
+        )
         instance.save()
 
         if amenity_ids is not None or image_urls is not None:
@@ -235,4 +258,5 @@ class ListingWriteSerializer(serializers.ModelSerializer):
                 amenity_ids=amenity_ids if amenity_ids is not None else list(instance.amenities.values_list("id", flat=True)),
                 image_urls=image_urls if image_urls is not None else list(instance.images.values_list("image_url", flat=True)),
             )
+        queue_model_translation(instance, changed_fields)
         return instance

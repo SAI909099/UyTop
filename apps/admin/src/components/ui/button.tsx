@@ -1,18 +1,15 @@
 import type { ButtonHTMLAttributes, PropsWithChildren } from 'react';
 
+import { classNames } from '@/lib/utils/classnames';
+
 type ButtonProps = PropsWithChildren<ButtonHTMLAttributes<HTMLButtonElement>>;
 
-export function Button({ children, style, ...props }: ButtonProps) {
+export function Button({ children, className, style, ...props }: ButtonProps) {
   return (
     <button
       {...props}
+      className={classNames('admin-button', className)}
       style={{
-        border: 0,
-        borderRadius: '999px',
-        padding: '12px 18px',
-        background: 'var(--accent)',
-        color: 'white',
-        cursor: 'pointer',
         ...style,
       }}
     >

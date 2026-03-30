@@ -14,6 +14,10 @@ Current scope:
 - modular app boundaries for accounts, common, core, locations, listings, interactions, and moderation
 - listing CRUD, map discovery, favorites, recently viewed, saved searches, reports, and admin moderation foundations
 
+Local runtime note:
+- backend startup and tests require native GIS libraries in addition to Python packages because the project uses `django.contrib.gis` and PostGIS-backed fields
+- on a host machine, make sure GDAL/PostGIS client libraries are installed or run the backend inside the provided Docker setup
+
 Current domain apps:
 - `common`: shared abstract models
 - `core`: platform-level endpoints such as health checks

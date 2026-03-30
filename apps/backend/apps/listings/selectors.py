@@ -1,6 +1,8 @@
 from django.contrib.gis.geos import Polygon
 from django.db.models import Count, Q
 
+from apps.common.locale import normalize_language
+from apps.common.translation import build_localized_text_query
 from apps.listings.models import Listing, ListingModerationStatus, ListingStatus
 
 
@@ -21,7 +23,7 @@ def visible_listings_queryset(user):
     return queryset.filter(moderation_status=ListingModerationStatus.APPROVED, status__in=PUBLIC_STATUSES)
 
 
-def apply_listing_filters(queryset, params, user=None):
+def apply_listing_filters(queryset, params, user=None, language: str | None = None):
     mapping = {
         "purpose": "purpose",
         "category": "category",
@@ -58,6 +60,17 @@ def apply_listing_filters(queryset, params, user=None):
         value = params.get(param)
         if value not in (None, ""):
             queryset = queryset.filter(**{lookup: value})
+
+    search_query = (params.get("search") or params.get("q") or "").strip()
+    if search_query:
+        resolved_language = normalize_language(language or params.get("locale"))
+        queryset = queryset.filter(
+            build_localized_text_query("title", resolved_language, search_query)
+            | build_localized_text_query("description", resolved_language, search_query)
+            | build_localized_text_query("address", resolved_language, search_query)
+            | Q(city__name__icontains=search_query)
+            | Q(district__name__icontains=search_query)
+        )
 
     sort = params.get("sort", "newest")
     if sort == "price_asc":

@@ -1,7 +1,10 @@
+import tempfile
 from datetime import timedelta
 from decimal import Decimal
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
+from django.test import override_settings
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -482,3 +485,117 @@ class CatalogApiTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_company_patch_preserves_existing_source_language_when_omitted(self):
+        self.authenticate()
+        company = DeveloperCompany.objects.create(
+            name="Dream House",
+            name_translations={"en": "Dream House"},
+            tagline="Premium residential developer",
+            tagline_translations={"en": "Premium residential developer"},
+            short_description="Flagship developer profile",
+            short_description_translations={"en": "Flagship developer profile"},
+            description="Company description",
+            description_translations={"en": "Company description"},
+            headquarters="Tashkent",
+            headquarters_translations={"en": "Tashkent"},
+            trust_note="Verified",
+            trust_note_translations={"en": "Verified"},
+            source_language="en",
+            is_verified=True,
+        )
+
+        response = self.client.patch(
+            f"/api/catalog/companies/{company.slug}",
+            {
+                "is_active": False,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        company.refresh_from_db()
+        self.assertEqual(company.source_language, "en")
+        self.assertEqual(response.data["source_language"], "en")
+        self.assertEqual(response.data["translations"]["name"]["en"], "Dream House")
+        self.assertFalse(company.is_active)
+
+    def test_admin_can_read_inactive_catalog_records_while_public_cannot(self):
+        company = self.create_company()
+        project = self.create_project(company, is_active=False)
+        building = self.create_building(project, is_active=False)
+        company.is_active = False
+        company.save(update_fields=["is_active"])
+
+        public_companies_response = self.client.get("/api/catalog/companies")
+        public_projects_response = self.client.get("/api/catalog/projects")
+        public_buildings_response = self.client.get("/api/catalog/buildings")
+        public_company_detail_response = self.client.get(f"/api/catalog/companies/{company.slug}")
+        public_project_detail_response = self.client.get(f"/api/catalog/projects/{project.slug}")
+        public_building_detail_response = self.client.get(f"/api/catalog/buildings/{building.slug}")
+
+        self.assertEqual(public_companies_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_projects_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_buildings_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(public_companies_response.data["count"], 0)
+        self.assertEqual(public_projects_response.data["count"], 0)
+        self.assertEqual(public_buildings_response.data["count"], 0)
+        self.assertEqual(public_company_detail_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(public_project_detail_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(public_building_detail_response.status_code, status.HTTP_404_NOT_FOUND)
+
+        self.authenticate()
+
+        admin_companies_response = self.client.get("/api/catalog/companies")
+        admin_projects_response = self.client.get("/api/catalog/projects")
+        admin_buildings_response = self.client.get("/api/catalog/buildings")
+        admin_company_detail_response = self.client.get(f"/api/catalog/companies/{company.slug}")
+        admin_project_detail_response = self.client.get(f"/api/catalog/projects/{project.slug}")
+        admin_building_detail_response = self.client.get(f"/api/catalog/buildings/{building.slug}")
+        admin_lookups_response = self.client.get("/api/catalog/lookups")
+
+        self.assertEqual(admin_companies_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(admin_projects_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(admin_buildings_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(admin_company_detail_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(admin_project_detail_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(admin_building_detail_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(admin_lookups_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(admin_companies_response.data["results"][0]["id"], company.id)
+        self.assertEqual(admin_projects_response.data["results"][0]["id"], project.id)
+        self.assertEqual(admin_buildings_response.data["results"][0]["id"], building.id)
+        self.assertEqual(admin_company_detail_response.data["id"], company.id)
+        self.assertEqual(admin_project_detail_response.data["id"], project.id)
+        self.assertEqual(admin_building_detail_response.data["id"], building.id)
+        self.assertEqual(admin_lookups_response.data["companies"][0]["id"], company.id)
+        self.assertEqual(admin_lookups_response.data["projects"][0]["id"], project.id)
+        self.assertEqual(admin_lookups_response.data["buildings"][0]["id"], building.id)
+
+    def test_admin_can_delete_apartment(self):
+        self.authenticate()
+        company = self.create_company()
+        project = self.create_project(company)
+        building = self.create_building(project)
+        apartment = self.create_apartment(building)
+
+        response = self.client.delete(f"/api/catalog/apartments/{apartment.slug}")
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Apartment.objects.filter(pk=apartment.pk).exists())
+
+    def test_admin_can_upload_catalog_image(self):
+        self.authenticate()
+
+        with tempfile.TemporaryDirectory() as media_root:
+            upload = SimpleUploadedFile("catalog-logo.png", b"fake-image-content", content_type="image/png")
+
+            with override_settings(MEDIA_ROOT=media_root):
+                response = self.client.post(
+                    "/api/catalog/uploads/images",
+                    {"file": upload},
+                    format="multipart",
+                )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data["image_url"].endswith(".png"))
+        self.assertIn("catalog/", response.data["storage_key"])

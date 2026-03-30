@@ -1,56 +1,62 @@
-import Link from 'next/link';
+"use client";
 
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
+import { AdminLanguageSwitcher } from '@/components/layout/admin-language-switcher';
 import type { AdminSession } from '@/lib/auth/session';
+import { adminDictionary, type LocaleCode } from '@/lib/i18n';
+import { classNames } from '@/lib/utils/classnames';
 
 type AdminSidebarProps = {
   session: AdminSession;
+  locale: LocaleCode;
 };
 
-const links = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/catalog', label: 'Catalog' },
-  { href: '/companies', label: 'Companies' },
-  { href: '/projects', label: 'Projects' },
-  { href: '/buildings', label: 'Buildings' },
-  { href: '/apartments', label: 'Apartments' },
-  { href: '/moderation', label: 'Moderation' },
-  { href: '/users', label: 'Users' },
-];
+export function AdminSidebar({ session, locale }: AdminSidebarProps) {
+  const pathname = usePathname();
+  const dictionary = adminDictionary[locale];
+  const links = [
+    { href: '/dashboard', label: dictionary.nav.dashboard },
+    { href: '/catalog', label: dictionary.nav.catalog },
+    { href: '/companies', label: dictionary.nav.companies },
+    { href: '/projects', label: dictionary.nav.projects },
+    { href: '/buildings', label: dictionary.nav.buildings },
+    { href: '/apartments', label: dictionary.nav.apartments },
+    { href: '/moderation', label: dictionary.nav.moderation },
+    { href: '/users', label: dictionary.nav.users },
+  ];
 
-export function AdminSidebar({ session }: AdminSidebarProps) {
   return (
-    <aside
-      style={{
-        borderRight: '1px solid var(--border)',
-        background: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(12px)',
-        padding: '32px 24px',
-      }}
-    >
-      <div style={{ display: 'grid', gap: '24px' }}>
-        <div>
-          <p style={{ margin: 0, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            UyTop Admin
-          </p>
-          <h2 style={{ margin: '8px 0 0', fontSize: '1.6rem' }}>Operations and catalog</h2>
+    <aside className="admin-sidebar">
+      <div className="admin-sidebar-inner">
+        <div className="admin-sidebar-brand">
+          <span className="admin-sidebar-mark">UT</span>
+          <div>
+            <p>UyTop Admin</p>
+            <h2>{dictionary.operations}</h2>
+          </div>
         </div>
-        <nav style={{ display: 'grid', gap: '8px' }}>
+
+        <nav className="admin-sidebar-nav">
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              style={{
-                padding: '12px 14px',
-                borderRadius: '12px',
-                background: 'var(--surface-muted)',
-              }}
+              className={classNames(
+                'admin-sidebar-link',
+                (pathname === link.href || pathname.startsWith(`${link.href}/`)) && 'admin-sidebar-link-active',
+              )}
             >
               {link.label}
             </Link>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto', color: 'var(--text-muted)' }}>
-          Signed in as {session.email}
+
+        <AdminLanguageSwitcher locale={locale} label={dictionary.languageLabel} />
+        <div className="admin-sidebar-session">
+          <span>{dictionary.signedInAs}</span>
+          <strong>{session.email}</strong>
         </div>
       </div>
     </aside>

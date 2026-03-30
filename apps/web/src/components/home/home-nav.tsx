@@ -1,32 +1,43 @@
+import { buildLocalizedPath, getServerLocale, type LocaleCode, webDictionary } from '@/lib/i18n';
+
+import { HomeLanguageSwitcher } from './home-language-switcher';
+
 type HomePrimaryNavProps = {
   ctaHref?: string;
   ctaLabel?: string;
+  locale?: LocaleCode;
 };
 
-export function HomePrimaryNav({
-  ctaHref = "/projects",
-  ctaLabel = "Explore launches",
+export async function HomePrimaryNav({
+  ctaHref,
+  ctaLabel,
+  locale: localeProp,
 }: HomePrimaryNavProps) {
+  const locale = localeProp ?? (await getServerLocale());
+  const dictionary = webDictionary[locale];
+  const resolvedCtaHref = ctaHref ?? buildLocalizedPath(locale, '/projects');
+
   return (
     <nav className="home-nav">
       <div className="site-shell home-nav-inner">
-        <a href="/" className="brand-lockup">
+        <a href={buildLocalizedPath(locale, '/')} className="brand-lockup">
           <span className="brand-mark">UT</span>
           <span>
             <strong>UyTop</strong>
-            <small>Where vision meets residence</small>
+            <small>{dictionary.brandLine}</small>
           </span>
         </a>
 
         <div className="home-nav-links">
-          <a href="/map">Live map</a>
-          <a href="/projects">Projects</a>
-          <a href="/developers">Developers</a>
-          <a href="/residences">Residences</a>
+          <a href={buildLocalizedPath(locale, '/map')}>{dictionary.nav.map}</a>
+          <a href={buildLocalizedPath(locale, '/projects')}>{dictionary.nav.projects}</a>
+          <a href={buildLocalizedPath(locale, '/developers')}>{dictionary.nav.developers}</a>
+          <a href={buildLocalizedPath(locale, '/residences')}>{dictionary.nav.residences}</a>
         </div>
 
-        <a href={ctaHref} className="button button-primary">
-          {ctaLabel}
+        <HomeLanguageSwitcher locale={locale} label={dictionary.nav.language} />
+        <a href={resolvedCtaHref} className="landing-button landing-button-primary home-nav-cta">
+          {ctaLabel ?? dictionary.nav.cta}
         </a>
       </div>
     </nav>

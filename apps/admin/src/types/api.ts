@@ -1,3 +1,22 @@
+export type LocaleCode = 'uz' | 'en' | 'ru';
+
+export type TranslationState = 'not_requested' | 'pending' | 'completed' | 'failed' | 'stale';
+
+export type LocalizedFieldTranslations = Partial<Record<LocaleCode, string>>;
+
+export type TranslationPayload = Record<string, LocalizedFieldTranslations>;
+
+export type TranslationStatusMap = Record<string, Partial<Record<LocaleCode, string>>>;
+
+export type TranslatableRecordMeta = {
+  source_language: LocaleCode;
+  translations: TranslationPayload;
+  translation_state: TranslationState;
+  translation_status_map: TranslationStatusMap;
+  translation_updated_at: string | null;
+  translation_error: string;
+};
+
 export type ApiListResponse<T> = {
   count: number;
   next: string | null;
@@ -36,7 +55,7 @@ export type CatalogLookups = {
   apartment_statuses: PaymentOptionLookup[];
 };
 
-export type CatalogCompany = {
+export type CatalogCompany = TranslatableRecordMeta & {
   id: number;
   name: string;
   slug: string;
@@ -54,7 +73,7 @@ export type CatalogCompany = {
   apartment_count?: number;
 };
 
-export type CatalogProject = {
+export type CatalogProject = TranslatableRecordMeta & {
   id: number;
   company: number;
   name: string;
@@ -69,10 +88,11 @@ export type CatalogProject = {
   currency: string;
   delivery_window: string;
   hero_image_url: string;
+  is_active?: boolean;
   building_count?: number;
 };
 
-export type CatalogBuilding = {
+export type CatalogBuilding = TranslatableRecordMeta & {
   id: number;
   project: number;
   code: string;
@@ -103,7 +123,7 @@ export type CatalogImage = {
   is_primary?: boolean;
 };
 
-export type CatalogApartment = {
+export type CatalogApartment = TranslatableRecordMeta & {
   id: number;
   building: number;
   title: string;

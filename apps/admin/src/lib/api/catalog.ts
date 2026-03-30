@@ -9,24 +9,88 @@ import type {
   CatalogProject,
 } from '@/types/api';
 
+type PaginationParams = {
+  page?: number;
+  pageSize?: number;
+};
+
+function buildQuery(params: Record<string, string | number | null | undefined>) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === '') {
+      return;
+    }
+
+    query.set(key, String(value));
+  });
+
+  return query.size ? `?${query.toString()}` : '';
+}
+
 export function getCompanies() {
   return apiFetch<ApiListResponse<CatalogCompany>>('/catalog/companies');
+}
+
+export function getCompaniesPage(params: PaginationParams = {}) {
+  const query = buildQuery({
+    page: params.page,
+    page_size: params.pageSize,
+  });
+
+  return apiFetch<ApiListResponse<CatalogCompany>>(`/catalog/companies${query}`);
 }
 
 export function getProjects(companyId?: number) {
   return apiFetch<ApiListResponse<CatalogProject>>(`/catalog/projects${companyId ? `?company=${companyId}` : ''}`);
 }
 
+export function getProjectsPage(params: PaginationParams & { companyId?: number } = {}) {
+  const query = buildQuery({
+    company: params.companyId,
+    page: params.page,
+    page_size: params.pageSize,
+  });
+
+  return apiFetch<ApiListResponse<CatalogProject>>(`/catalog/projects${query}`);
+}
+
 export function getBuildings(projectId?: number) {
   return apiFetch<ApiListResponse<CatalogBuilding>>(`/catalog/buildings${projectId ? `?project=${projectId}` : ''}`);
 }
 
+export function getBuildingsPage(params: PaginationParams & { projectId?: number } = {}) {
+  const query = buildQuery({
+    project: params.projectId,
+    page: params.page,
+    page_size: params.pageSize,
+  });
+
+  return apiFetch<ApiListResponse<CatalogBuilding>>(`/catalog/buildings${query}`);
+}
+
 export function getApartments(params: { companyId?: number; projectId?: number; buildingId?: number } = {}) {
-  const query = new URLSearchParams();
-  if (params.companyId) query.set('company', String(params.companyId));
-  if (params.projectId) query.set('project', String(params.projectId));
-  if (params.buildingId) query.set('building', String(params.buildingId));
-  return apiFetch<ApiListResponse<CatalogApartment>>(`/catalog/apartments${query.size ? `?${query.toString()}` : ''}`);
+  const query = buildQuery({
+    company: params.companyId,
+    project: params.projectId,
+    building: params.buildingId,
+  });
+
+  return apiFetch<ApiListResponse<CatalogApartment>>(`/catalog/apartments${query}`);
+}
+
+export function getApartmentsPage(
+  params: { companyId?: number; projectId?: number; buildingId?: number; page?: number; pageSize?: number } = {},
+) {
+  const query = buildQuery({
+    company: params.companyId,
+    project: params.projectId,
+    building: params.buildingId,
+    page: params.page,
+    page_size: params.pageSize,
+  });
+
+  return apiFetch<ApiListResponse<CatalogApartment>>(`/catalog/apartments${query}`);
 }
 
 export function getCompanyDetail(slug: string) {
@@ -61,12 +125,28 @@ export function updateCompany(slug: string, payload: unknown) {
   return apiMutate<CatalogCompany>(`/catalog/companies/${slug}`, 'PATCH', payload);
 }
 
+export function archiveCompany(slug: string) {
+  return updateCompany(slug, { is_active: false });
+}
+
+export function restoreCompany(slug: string) {
+  return updateCompany(slug, { is_active: true });
+}
+
 export function createProject(payload: unknown) {
   return apiMutate<CatalogProject>('/catalog/projects', 'POST', payload);
 }
 
 export function updateProject(slug: string, payload: unknown) {
   return apiMutate<CatalogProject>(`/catalog/projects/${slug}`, 'PATCH', payload);
+}
+
+export function archiveProject(slug: string) {
+  return updateProject(slug, { is_active: false });
+}
+
+export function restoreProject(slug: string) {
+  return updateProject(slug, { is_active: true });
 }
 
 export function createBuilding(payload: unknown) {
@@ -77,12 +157,24 @@ export function updateBuilding(slug: string, payload: unknown) {
   return apiMutate<CatalogBuilding>(`/catalog/buildings/${slug}`, 'PATCH', payload);
 }
 
+export function archiveBuilding(slug: string) {
+  return updateBuilding(slug, { is_active: false });
+}
+
+export function restoreBuilding(slug: string) {
+  return updateBuilding(slug, { is_active: true });
+}
+
 export function createApartment(payload: unknown) {
   return apiMutate<CatalogApartment>('/catalog/apartments', 'POST', payload);
 }
 
 export function updateApartment(slug: string, payload: unknown) {
   return apiMutate<CatalogApartment>(`/catalog/apartments/${slug}`, 'PATCH', payload);
+}
+
+export function deleteApartment(slug: string) {
+  return apiMutate<void>(`/catalog/apartments/${slug}`, 'DELETE');
 }
 
 export async function uploadCatalogImage(file: File) {

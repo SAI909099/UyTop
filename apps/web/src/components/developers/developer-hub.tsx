@@ -1,334 +1,390 @@
 "use client";
 
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from "react";
 
-import { formatCompactNumber } from '@/lib/utils/format';
-import type { DeveloperHubCompany } from '@/types/home';
+import { buildLocalizedPath, type LocaleCode } from "@/lib/i18n";
+import { formatCompactNumber } from "@/lib/utils/format";
+import type { PublicCompany } from "@/types/home";
 
 type DeveloperHubProps = {
-  companies: DeveloperHubCompany[];
+  locale: LocaleCode;
+  companies: PublicCompany[];
 };
 
-type ExperienceFilter = 'all' | '10_plus' | '5_to_9' | 'under_5';
-type PortfolioFilter = 'all' | '10_plus' | '5_to_9' | '1_to_4';
+type StatusFilter = "all" | "verified" | "public";
+type SortMode = "featured" | "projects" | "apartments" | "name";
 
-const experienceOptions: Array<{ value: ExperienceFilter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: '10_plus', label: '10+ Years' },
-  { value: '5_to_9', label: '5-9 Years' },
-  { value: 'under_5', label: 'Under 5' },
-];
+type DeveloperHubCopy = {
+  pageLabel: string;
+  pageTitle: string;
+  pageLead: string;
+  searchLabel: string;
+  searchPlaceholder: string;
+  regionLabel: string;
+  statusLabel: string;
+  sortLabel: string;
+  allRegions: string;
+  allStatuses: string;
+  verifiedOnly: string;
+  publicProfiles: string;
+  sortFeatured: string;
+  sortProjects: string;
+  sortApartments: string;
+  sortName: string;
+  developers: (count: number) => string;
+  resetFilters: string;
+  verified: string;
+  public: string;
+  regionPending: string;
+  profileNoteFallback: string;
+  projects: string;
+  residences: string;
+  viewProfile: string;
+  noMatches: string;
+  noMatchesTitle: string;
+  noMatchesCopy: string;
+  showAllDevelopers: string;
+};
 
-const portfolioOptions: Array<{ value: PortfolioFilter; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: '10_plus', label: '10+ Projects' },
-  { value: '5_to_9', label: '5-9 Projects' },
-  { value: '1_to_4', label: '1-4 Projects' },
-];
+const developerHubCopy: Record<LocaleCode, DeveloperHubCopy> = {
+  uz: {
+    pageLabel: "Developerlar katalogi",
+    pageTitle: "Ishonchli quruvchilarni bir joyda solishtiring.",
+    pageLead:
+      "Faol developerlarni qidiruv, hudud va status bo'yicha toraytiring, so'ng shu kompaniyaning loyihalar oqimiga o'ting.",
+    searchLabel: "Qidiruv",
+    searchPlaceholder: "Developer, slogan, izoh yoki shtab",
+    regionLabel: "Hudud",
+    statusLabel: "Status",
+    sortLabel: "Saralash",
+    allRegions: "Barcha hududlar",
+    allStatuses: "Barcha statuslar",
+    verifiedOnly: "Tasdiqlangan",
+    publicProfiles: "Ommaviy",
+    sortFeatured: "Tanlangan",
+    sortProjects: "Loyihalar soni",
+    sortApartments: "Kvartiralar soni",
+    sortName: "Nomi bo'yicha",
+    developers: (count) => `${count} ta developer`,
+    resetFilters: "Filtrlarni tiklash",
+    verified: "Tasdiqlangan",
+    public: "Ommaviy",
+    regionPending: "Hudud ko'rsatilmagan",
+    profileNoteFallback: "Ommaviy katalog uchun tayyorlangan professional developer profili.",
+    projects: "Loyihalar",
+    residences: "Kvartiralar",
+    viewProfile: "Profilni ko'rish",
+    noMatches: "Mos developer topilmadi",
+    noMatchesTitle: "Joriy qidiruv va filtrlarga mos developerlar yo'q.",
+    noMatchesCopy: "Qidiruvni soddalashtiring yoki status va hudud filtrlarini tozalab to'liq ro'yxatni qaytaring.",
+    showAllDevelopers: "Barcha developerlarni ko'rsatish",
+  },
+  en: {
+    pageLabel: "Developer directory",
+    pageTitle: "Compare trusted builders in a cleaner directory.",
+    pageLead:
+      "Filter the active developer roster by search, region, and status, then jump into that company’s project flow.",
+    searchLabel: "Search",
+    searchPlaceholder: "Developer, tagline, note, or HQ",
+    regionLabel: "Region",
+    statusLabel: "Status",
+    sortLabel: "Sort",
+    allRegions: "All regions",
+    allStatuses: "All statuses",
+    verifiedOnly: "Verified",
+    publicProfiles: "Public",
+    sortFeatured: "Featured",
+    sortProjects: "Most projects",
+    sortApartments: "Most residences",
+    sortName: "Name",
+    developers: (count) => `${count} ${count === 1 ? "developer" : "developers"}`,
+    resetFilters: "Reset filters",
+    verified: "Verified",
+    public: "Public",
+    regionPending: "Region pending",
+    profileNoteFallback: "Professional developer profile prepared for the public catalog.",
+    projects: "Projects",
+    residences: "Residences",
+    viewProfile: "View profile",
+    noMatches: "No matches",
+    noMatchesTitle: "No developers match the current search and filters.",
+    noMatchesCopy: "Widen the search or clear the region and status filters to bring the full roster back.",
+    showAllDevelopers: "Show all developers",
+  },
+  ru: {
+    pageLabel: "Каталог застройщиков",
+    pageTitle: "Сравнивайте надёжных застройщиков в понятном каталоге.",
+    pageLead:
+      "Фильтруйте активный список по поиску, региону и статусу, затем переходите к проектам выбранной компании.",
+    searchLabel: "Поиск",
+    searchPlaceholder: "Застройщик, слоган, заметка или штаб",
+    regionLabel: "Регион",
+    statusLabel: "Статус",
+    sortLabel: "Сортировка",
+    allRegions: "Все регионы",
+    allStatuses: "Все статусы",
+    verifiedOnly: "Проверенные",
+    publicProfiles: "Публичные",
+    sortFeatured: "Избранное",
+    sortProjects: "Больше проектов",
+    sortApartments: "Больше квартир",
+    sortName: "По названию",
+    developers: (count) => `${count} ${count === 1 ? "застройщик" : count < 5 ? "застройщика" : "застройщиков"}`,
+    resetFilters: "Сбросить фильтры",
+    verified: "Проверен",
+    public: "Публичный",
+    regionPending: "Регион не указан",
+    profileNoteFallback: "Профессиональный профиль застройщика для публичного каталога.",
+    projects: "Проекты",
+    residences: "Квартиры",
+    viewProfile: "Открыть профиль",
+    noMatches: "Совпадений нет",
+    noMatchesTitle: "По текущему поиску и фильтрам застройщики не найдены.",
+    noMatchesCopy: "Расширьте поиск или очистите фильтры региона и статуса, чтобы вернуть весь список.",
+    showAllDevelopers: "Показать всех застройщиков",
+  },
+};
 
 function initials(name: string) {
   return name
-    .split(' ')
+    .split(" ")
     .filter(Boolean)
     .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
-function getRegion(company: DeveloperHubCompany) {
-  return company.headquarters.trim();
+function getRegion(company: PublicCompany, copy: DeveloperHubCopy) {
+  return company.headquarters.trim() || copy.regionPending;
 }
 
-function getCompanyNote(company: DeveloperHubCompany) {
-  return company.trust_note || company.tagline || company.short_description || 'Verified developer profile';
+function getCompanyNote(company: PublicCompany, copy: DeveloperHubCopy) {
+  return company.tagline.trim() || company.trust_note.trim() || company.short_description.trim() || copy.profileNoteFallback;
 }
 
-function getExperienceLabel(company: DeveloperHubCompany) {
-  if (!company.experience_years || company.experience_years < 1) {
-    return 'Experience pending';
-  }
+function sortCompanies(companies: PublicCompany[], sortMode: SortMode) {
+  return [...companies].sort((left, right) => {
+    if (sortMode === "projects" && left.project_count !== right.project_count) {
+      return right.project_count - left.project_count;
+    }
 
-  return `${company.experience_years}+ years`;
+    if (sortMode === "apartments" && left.apartment_count !== right.apartment_count) {
+      return right.apartment_count - left.apartment_count;
+    }
+
+    if (sortMode === "name") {
+      return left.name.localeCompare(right.name);
+    }
+
+    if (left.is_verified !== right.is_verified) {
+      return Number(right.is_verified) - Number(left.is_verified);
+    }
+
+    if (left.project_count !== right.project_count) {
+      return right.project_count - left.project_count;
+    }
+
+    if (left.apartment_count !== right.apartment_count) {
+      return right.apartment_count - left.apartment_count;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
 }
 
-function matchesExperienceFilter(company: DeveloperHubCompany, filter: ExperienceFilter) {
-  if (filter === 'all') {
-    return true;
-  }
-
-  const years = company.experience_years;
-  if (!years || years < 1) {
-    return false;
-  }
-
-  if (filter === '10_plus') {
-    return years >= 10;
-  }
-
-  if (filter === '5_to_9') {
-    return years >= 5 && years <= 9;
-  }
-
-  return years < 5;
-}
-
-function matchesPortfolioFilter(company: DeveloperHubCompany, filter: PortfolioFilter) {
-  if (filter === 'all') {
-    return true;
-  }
-
-  if (filter === '10_plus') {
-    return company.project_count >= 10;
-  }
-
-  if (filter === '5_to_9') {
-    return company.project_count >= 5 && company.project_count <= 9;
-  }
-
-  return company.project_count >= 1 && company.project_count <= 4;
-}
-
-function DeveloperHubCard({ company }: { company: DeveloperHubCompany }) {
-  const region = getRegion(company) || 'Region pending';
+function DeveloperDirectoryCard({
+  locale,
+  company,
+  copy,
+}: {
+  locale: LocaleCode;
+  company: PublicCompany;
+  copy: DeveloperHubCopy;
+}) {
+  const region = getRegion(company, copy);
+  const note = getCompanyNote(company, copy);
 
   return (
-    <article className="developer-hub-card premium-surface" aria-label={company.name}>
-      <div className="developer-hub-card-topline">
-        <span className={`developer-hub-card-mark${company.logo_url ? ' developer-hub-card-mark-logo' : ''}`}>
+    <article className="premium-surface developers-directory-card" aria-label={company.name}>
+      <div className="developers-directory-card-head">
+        <span className={`developers-directory-card-logo${company.logo_url ? " developers-directory-card-logo-image" : ""}`}>
           {company.logo_url ? <img src={company.logo_url} alt={`${company.name} logo`} loading="lazy" /> : initials(company.name)}
         </span>
 
-        <div className="developer-hub-card-head">
-          <div>
-            <strong>{company.name}</strong>
-            <span>{region}</span>
+        <div className="developers-directory-card-title-wrap">
+          <div className="developers-directory-card-title-row">
+            <h3>{company.name}</h3>
+            <span
+              className={`developers-directory-card-badge${
+                company.is_verified ? " developers-directory-card-badge-verified" : ""
+              }`}
+            >
+              {company.is_verified ? copy.verified : copy.public}
+            </span>
           </div>
-          <span className={`developer-hub-card-badge${company.is_verified ? ' developer-hub-card-badge-verified' : ''}`}>
-            {company.is_verified ? 'Verified' : 'Public'}
-          </span>
+          <p className="developers-directory-card-region">{region}</p>
         </div>
       </div>
 
-      <p className="developer-hub-card-note">{getCompanyNote(company)}</p>
+      <p className="developers-directory-card-note">{note}</p>
 
-      <div className="developer-hub-card-meta">
-        <div>
-          <span>Experience</span>
-          <strong>{getExperienceLabel(company)}</strong>
-        </div>
-        <div>
-          <span>Projects</span>
+      <div className="developers-directory-card-stats">
+        <div className="developers-directory-card-stat">
           <strong>{formatCompactNumber(company.project_count)}</strong>
+          <span>{copy.projects}</span>
         </div>
-        <div>
-          <span>Live apartments</span>
+        <div className="developers-directory-card-stat">
           <strong>{formatCompactNumber(company.apartment_count)}</strong>
+          <span>{copy.residences}</span>
         </div>
       </div>
+
+      <a
+        href={buildLocalizedPath(locale, `/developers/${company.slug}`)}
+        className="button button-primary developers-directory-card-cta"
+      >
+        {copy.viewProfile}
+      </a>
     </article>
   );
 }
 
-export function DeveloperHub({ companies }: DeveloperHubProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [experienceFilter, setExperienceFilter] = useState<ExperienceFilter>('all');
-  const [portfolioFilter, setPortfolioFilter] = useState<PortfolioFilter>('all');
-  const [regionFilter, setRegionFilter] = useState('all');
+export function DeveloperHub({ locale, companies }: DeveloperHubProps) {
+  const copy = developerHubCopy[locale];
+  const [searchQuery, setSearchQuery] = useState("");
+  const [regionFilter, setRegionFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("featured");
   const deferredSearchQuery = useDeferredValue(searchQuery.trim().toLowerCase());
 
-  const regionOptions = ['all', ...new Set(companies.map(getRegion).filter(Boolean))];
-  const verifiedCount = companies.filter((company) => company.is_verified).length;
-  const representedRegions = new Set(companies.map(getRegion).filter(Boolean)).size;
-  const totalPortfolioCount = companies.reduce((sum, company) => sum + company.project_count, 0);
-  const visibleCompanies = companies.filter((company) => {
-    const region = getRegion(company);
-    const searchTarget = [company.name, company.tagline, company.short_description, company.headquarters]
-      .join(' ')
-      .toLowerCase();
+  const regionOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          companies
+            .map((company) => company.headquarters.trim())
+            .filter(Boolean),
+        ),
+      ).sort((left, right) => left.localeCompare(right)),
+    [companies],
+  );
 
-    const matchesSearch = !deferredSearchQuery || searchTarget.includes(deferredSearchQuery);
-    const matchesRegion = regionFilter === 'all' || region === regionFilter;
+  const visibleCompanies = useMemo(() => {
+    const filteredCompanies = companies.filter((company) => {
+      const searchTarget = [company.name, company.tagline, company.short_description, company.trust_note, company.headquarters]
+        .join(" ")
+        .toLowerCase();
 
-    return (
-      matchesSearch &&
-      matchesRegion &&
-      matchesExperienceFilter(company, experienceFilter) &&
-      matchesPortfolioFilter(company, portfolioFilter)
-    );
-  });
+      const matchesSearch = !deferredSearchQuery || searchTarget.includes(deferredSearchQuery);
+      const matchesRegion = regionFilter === "all" || company.headquarters.trim() === regionFilter;
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "verified" ? company.is_verified : !company.is_verified);
 
-  const hasActiveFilters =
-    searchQuery.trim().length > 0 || experienceFilter !== 'all' || portfolioFilter !== 'all' || regionFilter !== 'all';
+      return matchesSearch && matchesRegion && matchesStatus;
+    });
+
+    return sortCompanies(filteredCompanies, sortMode);
+  }, [companies, deferredSearchQuery, regionFilter, sortMode, statusFilter]);
+
+  const hasActiveFilters = searchQuery.trim().length > 0 || regionFilter !== "all" || statusFilter !== "all";
 
   function resetFilters() {
-    setSearchQuery('');
-    setExperienceFilter('all');
-    setPortfolioFilter('all');
-    setRegionFilter('all');
+    setSearchQuery("");
+    setRegionFilter("all");
+    setStatusFilter("all");
+    setSortMode("featured");
   }
 
   return (
-    <main className="developer-hub-page">
-      <section className="developer-hub-hero">
-        <div className="developer-hub-layer developer-hub-layer-one" />
-        <div className="developer-hub-layer developer-hub-layer-two" />
-
-        <div className="site-shell developer-hub-hero-grid">
-          <div className="developer-hub-copy">
-            <p className="hero-badge">
-              <span className="hero-badge-dot" />
-              Developer hub
-            </p>
-            <h1>
-              Our
-              <span className="hero-title-accent"> Developer Partners.</span>
-            </h1>
-            <p className="developer-hub-lead">
-              A premium directory for comparing verified builders, scanning trust signals, and narrowing the active
-              public roster with search and segmented portfolio filters.
-            </p>
-
-            <div className="hero-actions">
-              <a href="/map" className="button button-primary">
-                Open live map
-              </a>
-              <a href="/" className="button button-secondary">
-                Back to homepage
-              </a>
-            </div>
+    <main className="developers-directory-page">
+      <div className="site-shell">
+        <section className="developers-directory-top">
+          <div className="developers-directory-heading">
+            <p className="section-label">{copy.pageLabel}</p>
+            <h1 className="developers-directory-title">{copy.pageTitle}</h1>
+            <p className="developers-directory-lead">{copy.pageLead}</p>
           </div>
 
-          <aside className="developer-hub-spotlight premium-surface">
-            <p className="section-label">Live roster snapshot</p>
-            <h2>Professional, expensive, and built for direct comparison.</h2>
-            <div className="developer-hub-spotlight-grid">
-              <article>
-                <span>Active developers</span>
-                <strong>{formatCompactNumber(companies.length)}</strong>
-              </article>
-              <article>
-                <span>Verified brands</span>
-                <strong>{formatCompactNumber(verifiedCount)}</strong>
-              </article>
-              <article>
-                <span>Regions represented</span>
-                <strong>{formatCompactNumber(representedRegions)}</strong>
-              </article>
-              <article>
-                <span>Published portfolio</span>
-                <strong>{formatCompactNumber(totalPortfolioCount)}</strong>
-              </article>
+          <div className="premium-surface developers-directory-toolbar">
+            <div className="developers-directory-filter-grid">
+              <label className="developers-directory-field developers-directory-field-search" htmlFor="developer-directory-search">
+                <span>{copy.searchLabel}</span>
+                <input
+                  id="developer-directory-search"
+                  type="search"
+                  value={searchQuery}
+                  placeholder={copy.searchPlaceholder}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                />
+              </label>
+
+              <label className="developers-directory-field developers-directory-field-select">
+                <span>{copy.regionLabel}</span>
+                <select value={regionFilter} onChange={(event) => setRegionFilter(event.target.value)}>
+                  <option value="all">{copy.allRegions}</option>
+                  {regionOptions.map((region) => (
+                    <option key={region} value={region}>
+                      {region}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="developers-directory-field developers-directory-field-select">
+                <span>{copy.statusLabel}</span>
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
+                  <option value="all">{copy.allStatuses}</option>
+                  <option value="verified">{copy.verifiedOnly}</option>
+                  <option value="public">{copy.publicProfiles}</option>
+                </select>
+              </label>
+
+              <label className="developers-directory-field developers-directory-field-select">
+                <span>{copy.sortLabel}</span>
+                <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
+                  <option value="featured">{copy.sortFeatured}</option>
+                  <option value="projects">{copy.sortProjects}</option>
+                  <option value="apartments">{copy.sortApartments}</option>
+                  <option value="name">{copy.sortName}</option>
+                </select>
+              </label>
             </div>
-          </aside>
-        </div>
-      </section>
 
-      <section className="developer-hub-tools-section">
-        <div className="site-shell">
-          <div className="developer-hub-tools premium-surface">
-            <label className="developer-hub-search-shell" htmlFor="developer-hub-search">
-              <span>Search developers</span>
-              <input
-                id="developer-hub-search"
-                className="developer-hub-search-input"
-                type="search"
-                value={searchQuery}
-                placeholder="Developer, tagline, note, or region"
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </label>
-
-            <div className="developer-hub-filter-grid">
-              <div className="developer-hub-filter-group">
-                <span className="developer-hub-filter-label">Experience</span>
-                <div className="developer-hub-segment-row">
-                  {experienceOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`developer-hub-segment${experienceFilter === option.value ? ' developer-hub-segment-active' : ''}`}
-                      aria-pressed={experienceFilter === option.value}
-                      onClick={() => setExperienceFilter(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
+            <div className="developers-directory-results-bar" aria-live="polite">
+              <div className="developers-directory-results-copy">
+                <strong>{formatCompactNumber(visibleCompanies.length)}</strong>
+                <span>{copy.developers(visibleCompanies.length)}</span>
               </div>
 
-              <div className="developer-hub-filter-group">
-                <span className="developer-hub-filter-label">Region</span>
-                <div className="developer-hub-segment-row developer-hub-segment-row-scroll">
-                  {regionOptions.map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      className={`developer-hub-segment${regionFilter === option ? ' developer-hub-segment-active' : ''}`}
-                      aria-pressed={regionFilter === option}
-                      onClick={() => setRegionFilter(option)}
-                    >
-                      {option === 'all' ? 'All' : option}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="developer-hub-filter-group">
-                <span className="developer-hub-filter-label">Portfolio</span>
-                <div className="developer-hub-segment-row">
-                  {portfolioOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`developer-hub-segment${portfolioFilter === option.value ? ' developer-hub-segment-active' : ''}`}
-                      aria-pressed={portfolioFilter === option.value}
-                      onClick={() => setPortfolioFilter(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {hasActiveFilters ? (
+                <button type="button" className="button button-secondary developers-directory-reset" onClick={resetFilters}>
+                  {copy.resetFilters}
+                </button>
+              ) : null}
             </div>
           </div>
+        </section>
 
-          <div className="developer-hub-results-head">
-            <div>
-              <p className="section-label">Developer directory</p>
-              <h2 className="developer-hub-results-title">
-                {visibleCompanies.length} {visibleCompanies.length === 1 ? 'builder matches' : 'builders match'}
-              </h2>
-              <p className="developer-hub-results-copy">
-                Portfolio uses the currently published project count from the live public catalog. It is not a
-                completed-project claim.
-              </p>
+        <section className="developers-directory-results">
+          {visibleCompanies.length ? (
+            <div className="developers-directory-grid">
+              {visibleCompanies.map((company) => (
+                <DeveloperDirectoryCard key={company.id} locale={locale} company={company} copy={copy} />
+              ))}
             </div>
-
-            {hasActiveFilters ? (
-              <button type="button" className="developer-hub-reset" onClick={resetFilters}>
-                Clear filters
+          ) : (
+            <article className="premium-surface developers-directory-empty-state">
+              <p className="section-label">{copy.noMatches}</p>
+              <h2>{copy.noMatchesTitle}</h2>
+              <p>{copy.noMatchesCopy}</p>
+              <button type="button" className="button button-secondary developers-directory-reset" onClick={resetFilters}>
+                {copy.showAllDevelopers}
               </button>
-            ) : null}
-          </div>
-
-          <div className="developer-hub-grid">
-            {visibleCompanies.length ? (
-              visibleCompanies.map((company) => <DeveloperHubCard key={company.id} company={company} />)
-            ) : (
-              <article className="empty-card premium-surface developer-hub-empty">
-                <p className="section-label">No matches</p>
-                <h3>No developers match the current search and filters.</h3>
-                <p>Try widening the region or portfolio buckets, or clear the search to bring the full roster back.</p>
-                {hasActiveFilters ? (
-                  <button type="button" className="developer-hub-reset developer-hub-reset-inline" onClick={resetFilters}>
-                    Reset directory
-                  </button>
-                ) : null}
-              </article>
-            )}
-          </div>
-        </div>
-      </section>
+            </article>
+          )}
+        </section>
+      </div>
     </main>
   );
 }

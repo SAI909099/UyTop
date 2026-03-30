@@ -10,6 +10,9 @@ from apps.catalog.models import (
     ProjectBuilding,
     ResidentialProject,
 )
+from apps.common.locale import get_request_language
+from apps.common.serializers import LocalizedModelSerializerMixin, TranslatableWriteSerializerMixin
+from apps.common.translation import apply_translatable_updates, get_localized_value, queue_model_translation
 from apps.catalog.services import sync_apartment_relations
 from apps.listings.api.serializers import LocationCitySerializer, LocationDistrictSerializer
 from apps.locations.models import LocationCity, LocationDistrict
@@ -27,23 +30,27 @@ class ApartmentPaymentOptionSerializer(serializers.ModelSerializer):
         fields = ("payment_type", "notes")
 
 
-class DeveloperCompanyListSerializer(serializers.ModelSerializer):
+class DeveloperCompanyListSerializer(LocalizedModelSerializerMixin, serializers.ModelSerializer):
     project_count = serializers.SerializerMethodField()
     apartment_count = serializers.SerializerMethodField()
 
     class Meta:
         model = DeveloperCompany
+        localized_fields = DeveloperCompany.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "name",
             "slug",
             "tagline",
             "short_description",
+            "description",
             "logo_url",
             "hero_image_url",
+            "founded_year",
             "headquarters",
             "trust_note",
             "is_verified",
+            "is_active",
             "project_count",
             "apartment_count",
         )
@@ -55,19 +62,21 @@ class DeveloperCompanyListSerializer(serializers.ModelSerializer):
         return Apartment.objects.filter(building__project__company=obj).count()
 
 
-class ProjectSummarySerializer(serializers.ModelSerializer):
+class ProjectSummarySerializer(LocalizedModelSerializerMixin, serializers.ModelSerializer):
     city = LocationCitySerializer(read_only=True)
     district = LocationDistrictSerializer(read_only=True)
     building_count = serializers.SerializerMethodField()
 
     class Meta:
         model = ResidentialProject
+        localized_fields = ResidentialProject.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "company",
             "name",
             "slug",
             "headline",
+            "description",
             "location_label",
             "address",
             "city",
@@ -76,6 +85,7 @@ class ProjectSummarySerializer(serializers.ModelSerializer):
             "currency",
             "delivery_window",
             "hero_image_url",
+            "is_active",
             "building_count",
         )
 
@@ -83,11 +93,12 @@ class ProjectSummarySerializer(serializers.ModelSerializer):
         return obj.buildings.count()
 
 
-class BuildingSummarySerializer(serializers.ModelSerializer):
+class BuildingSummarySerializer(LocalizedModelSerializerMixin, serializers.ModelSerializer):
     apartments_left = serializers.SerializerMethodField()
 
     class Meta:
         model = ProjectBuilding
+        localized_fields = ProjectBuilding.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "project",
@@ -102,6 +113,7 @@ class BuildingSummarySerializer(serializers.ModelSerializer):
             "price_from",
             "price_to",
             "cover_image_url",
+            "is_active",
             "apartments_left",
         )
 
@@ -111,19 +123,20 @@ class BuildingSummarySerializer(serializers.ModelSerializer):
         ).count()
 
 
-class ApartmentSummarySerializer(serializers.ModelSerializer):
+class ApartmentSummarySerializer(LocalizedModelSerializerMixin, serializers.ModelSerializer):
     city = LocationCitySerializer(read_only=True)
     district = LocationDistrictSerializer(read_only=True)
     primary_image = serializers.SerializerMethodField()
     images = ApartmentImageSerializer(many=True, read_only=True)
-    company_name = serializers.CharField(source="building.project.company.name", read_only=True)
-    project_name = serializers.CharField(source="building.project.name", read_only=True)
-    building_name = serializers.CharField(source="building.name", read_only=True)
+    company_name = serializers.SerializerMethodField()
+    project_name = serializers.SerializerMethodField()
+    building_name = serializers.SerializerMethodField()
     building_code = serializers.CharField(source="building.code", read_only=True)
     payment_options = ApartmentPaymentOptionSerializer(many=True, read_only=True)
 
     class Meta:
         model = Apartment
+        localized_fields = Apartment.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "building",
@@ -158,6 +171,15 @@ class ApartmentSummarySerializer(serializers.ModelSerializer):
             return image.image_url
         return obj.images.first().image_url if obj.images.exists() else None
 
+    def get_company_name(self, obj):
+        return get_localized_value(obj.building.project.company, "name", get_request_language(self.context.get("request")))
+
+    def get_project_name(self, obj):
+        return get_localized_value(obj.building.project, "name", get_request_language(self.context.get("request")))
+
+    def get_building_name(self, obj):
+        return get_localized_value(obj.building, "name", get_request_language(self.context.get("request")))
+
 
 class ApartmentDetailSerializer(ApartmentSummarySerializer):
     class Meta(ApartmentSummarySerializer.Meta):
@@ -168,12 +190,7 @@ class DeveloperCompanyDetailSerializer(DeveloperCompanyListSerializer):
     projects = ProjectSummarySerializer(many=True, read_only=True)
 
     class Meta(DeveloperCompanyListSerializer.Meta):
-        fields = DeveloperCompanyListSerializer.Meta.fields + (
-            "description",
-            "founded_year",
-            "is_active",
-            "projects",
-        )
+        fields = DeveloperCompanyListSerializer.Meta.fields + ("projects",)
 
 
 class ProjectDetailSerializer(ProjectSummarySerializer):
@@ -181,7 +198,7 @@ class ProjectDetailSerializer(ProjectSummarySerializer):
     buildings = BuildingSummarySerializer(many=True, read_only=True)
 
     class Meta(ProjectSummarySerializer.Meta):
-        fields = ProjectSummarySerializer.Meta.fields + ("description", "is_active", "company", "buildings")
+        fields = ProjectSummarySerializer.Meta.fields + ("company", "buildings")
 
 
 class BuildingDetailSerializer(BuildingSummarySerializer):
@@ -189,12 +206,13 @@ class BuildingDetailSerializer(BuildingSummarySerializer):
     apartments = ApartmentSummarySerializer(many=True, read_only=True)
 
     class Meta(BuildingSummarySerializer.Meta):
-        fields = BuildingSummarySerializer.Meta.fields + ("is_active", "project", "apartments")
+        fields = BuildingSummarySerializer.Meta.fields + ("project", "apartments")
 
 
-class DeveloperCompanyWriteSerializer(serializers.ModelSerializer):
+class DeveloperCompanyWriteSerializer(TranslatableWriteSerializerMixin, serializers.ModelSerializer):
     class Meta:
         model = DeveloperCompany
+        localized_fields = DeveloperCompany.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "name",
@@ -208,10 +226,39 @@ class DeveloperCompanyWriteSerializer(serializers.ModelSerializer):
             "trust_note",
             "is_verified",
             "is_active",
+            "source_language",
+            "translations",
         )
 
+    def create(self, validated_data):
+        source_language, translations, source_values = self.pop_translation_controls(validated_data)
+        company = DeveloperCompany(**validated_data)
+        changed_fields = apply_translatable_updates(
+            company,
+            source_language=source_language,
+            source_values=source_values,
+            translations_payload=translations,
+        )
+        company.save()
+        queue_model_translation(company, changed_fields)
+        return company
 
-class ProjectWriteSerializer(serializers.ModelSerializer):
+    def update(self, instance, validated_data):
+        source_language, translations, source_values = self.pop_translation_controls(validated_data)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        changed_fields = apply_translatable_updates(
+            instance,
+            source_language=source_language,
+            source_values=source_values,
+            translations_payload=translations,
+        )
+        instance.save()
+        queue_model_translation(instance, changed_fields)
+        return instance
+
+
+class ProjectWriteSerializer(TranslatableWriteSerializerMixin, serializers.ModelSerializer):
     company_id = serializers.PrimaryKeyRelatedField(queryset=DeveloperCompany.objects.all(), source="company")
     city_id = serializers.PrimaryKeyRelatedField(queryset=LocationCity.objects.all(), source="city")
     district_id = serializers.PrimaryKeyRelatedField(
@@ -223,6 +270,7 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ResidentialProject
+        localized_fields = ResidentialProject.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "company_id",
@@ -238,6 +286,8 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
             "delivery_window",
             "hero_image_url",
             "is_active",
+            "source_language",
+            "translations",
         )
 
     def validate(self, attrs):
@@ -247,12 +297,40 @@ class ProjectWriteSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"district_id": "District must belong to the selected city."})
         return attrs
 
+    def create(self, validated_data):
+        source_language, translations, source_values = self.pop_translation_controls(validated_data)
+        project = ResidentialProject(**validated_data)
+        changed_fields = apply_translatable_updates(
+            project,
+            source_language=source_language,
+            source_values=source_values,
+            translations_payload=translations,
+        )
+        project.save()
+        queue_model_translation(project, changed_fields)
+        return project
 
-class BuildingWriteSerializer(serializers.ModelSerializer):
+    def update(self, instance, validated_data):
+        source_language, translations, source_values = self.pop_translation_controls(validated_data)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        changed_fields = apply_translatable_updates(
+            instance,
+            source_language=source_language,
+            source_values=source_values,
+            translations_payload=translations,
+        )
+        instance.save()
+        queue_model_translation(instance, changed_fields)
+        return instance
+
+
+class BuildingWriteSerializer(TranslatableWriteSerializerMixin, serializers.ModelSerializer):
     project_id = serializers.PrimaryKeyRelatedField(queryset=ResidentialProject.objects.all(), source="project")
 
     class Meta:
         model = ProjectBuilding
+        localized_fields = ProjectBuilding.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "project_id",
@@ -267,6 +345,8 @@ class BuildingWriteSerializer(serializers.ModelSerializer):
             "price_to",
             "cover_image_url",
             "is_active",
+            "source_language",
+            "translations",
         )
 
     def validate(self, attrs):
@@ -275,6 +355,33 @@ class BuildingWriteSerializer(serializers.ModelSerializer):
         if price_to and price_from and price_to < price_from:
             raise serializers.ValidationError({"price_to": "Price to cannot be less than price from."})
         return attrs
+
+    def create(self, validated_data):
+        source_language, translations, source_values = self.pop_translation_controls(validated_data)
+        building = ProjectBuilding(**validated_data)
+        changed_fields = apply_translatable_updates(
+            building,
+            source_language=source_language,
+            source_values=source_values,
+            translations_payload=translations,
+        )
+        building.save()
+        queue_model_translation(building, changed_fields)
+        return building
+
+    def update(self, instance, validated_data):
+        source_language, translations, source_values = self.pop_translation_controls(validated_data)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        changed_fields = apply_translatable_updates(
+            instance,
+            source_language=source_language,
+            source_values=source_values,
+            translations_payload=translations,
+        )
+        instance.save()
+        queue_model_translation(instance, changed_fields)
+        return instance
 
 
 class ApartmentPaymentOptionInputSerializer(serializers.Serializer):
@@ -287,7 +394,7 @@ class ApartmentUploadedImageInputSerializer(serializers.Serializer):
     storage_key = serializers.CharField(required=False, allow_blank=True, max_length=255)
 
 
-class ApartmentWriteSerializer(serializers.ModelSerializer):
+class ApartmentWriteSerializer(TranslatableWriteSerializerMixin, serializers.ModelSerializer):
     building_id = serializers.PrimaryKeyRelatedField(queryset=ProjectBuilding.objects.all(), source="building")
     city_id = serializers.PrimaryKeyRelatedField(queryset=LocationCity.objects.all(), source="city")
     district_id = serializers.PrimaryKeyRelatedField(
@@ -302,6 +409,7 @@ class ApartmentWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Apartment
+        localized_fields = Apartment.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "building_id",
@@ -323,6 +431,8 @@ class ApartmentWriteSerializer(serializers.ModelSerializer):
             "image_urls",
             "uploaded_images",
             "payment_options",
+            "source_language",
+            "translations",
         )
 
     def validate(self, attrs):
@@ -361,25 +471,41 @@ class ApartmentWriteSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        source_language, translations, source_values = self.pop_translation_controls(validated_data)
         image_urls = validated_data.pop("image_urls", [])
         uploaded_images = validated_data.pop("uploaded_images", [])
         payment_options = validated_data.pop("payment_options", [])
-        apartment = Apartment.objects.create(**validated_data)
+        apartment = Apartment(**validated_data)
+        changed_fields = apply_translatable_updates(
+            apartment,
+            source_language=source_language,
+            source_values=source_values,
+            translations_payload=translations,
+        )
+        apartment.save()
         sync_apartment_relations(
             apartment=apartment,
             image_urls=image_urls,
             uploaded_images=uploaded_images,
             payment_options=payment_options,
         )
+        queue_model_translation(apartment, changed_fields)
         return apartment
 
     def update(self, instance, validated_data):
+        source_language, translations, source_values = self.pop_translation_controls(validated_data)
         image_urls = validated_data.pop("image_urls", None)
         uploaded_images = validated_data.pop("uploaded_images", None)
         payment_options = validated_data.pop("payment_options", None)
 
         for field, value in validated_data.items():
             setattr(instance, field, value)
+        changed_fields = apply_translatable_updates(
+            instance,
+            source_language=source_language,
+            source_values=source_values,
+            translations_payload=translations,
+        )
         instance.save()
 
         if image_urls is not None or uploaded_images is not None or payment_options is not None:
@@ -395,22 +521,24 @@ class ApartmentWriteSerializer(serializers.ModelSerializer):
                     for option in instance.payment_options.all()
                 ],
             )
+        queue_model_translation(instance, changed_fields)
         return instance
 
 
-class ApartmentMapPreviewSerializer(serializers.ModelSerializer):
+class ApartmentMapPreviewSerializer(LocalizedModelSerializerMixin, serializers.ModelSerializer):
     city = LocationCitySerializer(read_only=True)
     district = LocationDistrictSerializer(read_only=True)
     primary_image = serializers.SerializerMethodField()
     payment_options = ApartmentPaymentOptionSerializer(many=True, read_only=True)
-    company_name = serializers.CharField(source="building.project.company.name", read_only=True)
-    project_name = serializers.CharField(source="building.project.name", read_only=True)
+    company_name = serializers.SerializerMethodField()
+    project_name = serializers.SerializerMethodField()
     project_slug = serializers.CharField(source="building.project.slug", read_only=True)
-    building_name = serializers.CharField(source="building.name", read_only=True)
+    building_name = serializers.SerializerMethodField()
     building_slug = serializers.CharField(source="building.slug", read_only=True)
 
     class Meta:
         model = Apartment
+        localized_fields = Apartment.TRANSLATABLE_FIELDS
         fields = (
             "id",
             "slug",
@@ -438,3 +566,12 @@ class ApartmentMapPreviewSerializer(serializers.ModelSerializer):
         if image:
             return image.image_url
         return obj.images.first().image_url if obj.images.exists() else None
+
+    def get_company_name(self, obj):
+        return get_localized_value(obj.building.project.company, "name", get_request_language(self.context.get("request")))
+
+    def get_project_name(self, obj):
+        return get_localized_value(obj.building.project, "name", get_request_language(self.context.get("request")))
+
+    def get_building_name(self, obj):
+        return get_localized_value(obj.building, "name", get_request_language(self.context.get("request")))

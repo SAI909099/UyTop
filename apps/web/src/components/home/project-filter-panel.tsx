@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { getPublicApartments, getPublicProjects } from '@/lib/api/public';
+import { buildLocalizedPath, type LocaleCode } from '@/lib/i18n';
 import { formatCurrency, formatRooms } from '@/lib/utils/format';
 import type {
   ProjectPriceBounds,
@@ -18,6 +19,7 @@ const PRICE_STEP = 25_000;
 const ADDRESS_DEBOUNCE_MS = 280;
 
 type ProjectFilterPanelProps = {
+  locale: LocaleCode;
   projects: PublicProject[];
   companies: PublicCompany[];
   totalCount: number;
@@ -49,12 +51,302 @@ type RangeControlProps = {
   onChange: (value: number) => void;
 };
 
-const sortOptions: { value: PublicProjectSort; label: string }[] = [
-  { value: 'featured', label: 'Featured' },
-  { value: 'price_asc', label: 'Lowest price' },
-  { value: 'price_desc', label: 'Highest price' },
-  { value: 'delivery_asc', label: 'Earliest year' },
-];
+type ProjectFilterCopy = {
+  sortFeatured: string;
+  sortLowestPrice: string;
+  sortHighestPrice: string;
+  sortEarliestYear: string;
+  verifiedDeveloper: string;
+  areaPending: string;
+  matchingResidences: string;
+  matchingResidencesTitle: string;
+  matchingResidencesCopy: (count: number) => string;
+  noMatchingResidencesCopy: string;
+  freshResidences: string;
+  freshResidencesTitle: string;
+  freshResidencesCopy: (count: number, visibleCount: number) => string;
+  noFreshResidencesCopy: string;
+  sectionLabel: string;
+  sectionTitle: string;
+  sectionCopy: string;
+  addressSearchTitle: string;
+  addressSearchCopy: string;
+  searchLocation: string;
+  searchPlaceholder: string;
+  addressExamples: string;
+  priceRangeTitle: string;
+  minimumPrice: string;
+  maximumPrice: string;
+  apartmentRoomsTitle: string;
+  apartmentRoomsCopy: string;
+  roomOptionsPending: string;
+  deliveryYearTitle: string;
+  anyPublishedYear: string;
+  allYears: string;
+  deliveryYearsPending: string;
+  activeFilters: string;
+  tapChipToClear: string;
+  allLaunchesVisible: string;
+  anyAddress: string;
+  fromPrice: (value: string) => string;
+  upToPrice: (value: string) => string;
+  anyRoomCount: string;
+  deliveryYearChip: (year: number) => string;
+  anyDeliveryYear: string;
+  resetFilters: string;
+  projectMatches: (count: number) => string;
+  showingLaunches: (start: number, end: number, total: number) => string;
+  noLaunchesMatch: string;
+  updatingResults: string;
+  retry: string;
+  startingFrom: string;
+  address: string;
+  delivery: string;
+  awaitingTimeline: string;
+  noMatches: string;
+  noProjectsMatch: string;
+  widenFilters: string;
+  showAllLaunches: string;
+  previous: string;
+  next: string;
+  refreshingApartments: string;
+  viewResidence: string;
+  noApartmentsMatch: string;
+  noLiveApartments: string;
+  noApartmentsMatchTitle: string;
+  noLiveApartmentsTitle: string;
+  noApartmentsMatchCopy: string;
+  noLiveApartmentsCopy: string;
+  clearFilters: string;
+  projectsEmptyLabel: string;
+  projectsEmptyTitle: string;
+  projectsEmptyCopy: string;
+};
+
+const projectFilterCopy: Record<LocaleCode, ProjectFilterCopy> = {
+  uz: {
+    sortFeatured: 'Tanlangan',
+    sortLowestPrice: 'Eng arzon',
+    sortHighestPrice: 'Eng qimmat',
+    sortEarliestYear: 'Eng yaqin yil',
+    verifiedDeveloper: 'Tasdiqlangan developer',
+    areaPending: 'Maydon kutilmoqda',
+    matchingResidences: 'Mos uylar',
+    matchingResidencesTitle: 'Filtrlaringizga mos kvartiralar.',
+    matchingResidencesCopy: (count) => `${count} ta mos ommaviy kvartiradan tasodifiy tanlov ko‘rsatilmoqda.`,
+    noMatchingResidencesCopy: 'Hozircha yuqoridagi filtrlarga mos ommaviy kvartiralar yo‘q.',
+    freshResidences: 'Yangi uylar',
+    freshResidencesTitle: 'Jonli katalogdan aylanuvchi kvartira tanlovi.',
+    freshResidencesCopy: (count, visibleCount) => `Faol ommaviy katalogdan ${Math.min(count, visibleCount)} ta tasodifiy kvartira ko‘rsatilmoqda.`,
+    noFreshResidencesCopy: 'Hozircha ko‘rsatish uchun ommaviy kvartiralar yo‘q.',
+    sectionLabel: 'Loyiha filtrlari',
+    sectionTitle: 'Loyihalarni manzil, narx, xonalar va topshirish muddatiga ko‘ra saralang.',
+    sectionCopy: 'Tuman yoki manzilni qidiring, kerakli kvartira tarkibini tanlang va bosh sahifadan chiqmasdan jonli loyihalarni ko‘rib chiqing.',
+    addressSearchTitle: 'Manzil bo‘yicha qidiruv',
+    addressSearchCopy: 'Loyiha manzili, tuman, shahar va loyiha nomi bo‘yicha qidiradi.',
+    searchLocation: 'Joylashuvni qidirish',
+    searchPlaceholder: 'Ko‘cha, tuman, shahar yoki loyiha',
+    addressExamples: 'Masalan: Yunusobod, Riverfront, Dream House, Namuna manzil.',
+    priceRangeTitle: 'Narx oralig‘i',
+    minimumPrice: 'Minimal narx',
+    maximumPrice: 'Maksimal narx',
+    apartmentRoomsTitle: 'Kvartira xonalari',
+    apartmentRoomsCopy: 'Faqat mos loyihalarni qoldirish uchun bir yoki bir nechta xona sonini tanlang.',
+    roomOptionsPending: 'Ommaviy kvartiralar e’lon qilinganda xona variantlari shu yerda chiqadi.',
+    deliveryYearTitle: 'Topshirish yili',
+    anyPublishedYear: 'Istalgan e’lon qilingan yil',
+    allYears: 'Barcha yillar',
+    deliveryYearsPending: 'Loyihalarda yil ko‘rsatilganda topshirish yillari shu yerda paydo bo‘ladi.',
+    activeFilters: 'Faol filtrlar',
+    tapChipToClear: 'Tozalash uchun istalgan chipni bosing.',
+    allLaunchesVisible: 'Hozir barcha loyihalar ko‘rinmoqda.',
+    anyAddress: 'Istalgan manzil',
+    fromPrice: (value) => `${value} dan`,
+    upToPrice: (value) => `${value} gacha`,
+    anyRoomCount: 'Istalgan xona soni',
+    deliveryYearChip: (year) => `Topshirish ${year}`,
+    anyDeliveryYear: 'Istalgan topshirish yili',
+    resetFilters: 'Filtrlarni tiklash',
+    projectMatches: (count) => `${count} ta mos loyiha`,
+    showingLaunches: (start, end, total) => `${total} ta loyihadan ${start}-${end} ko‘rsatilmoqda`,
+    noLaunchesMatch: 'Joriy filtrlarga mos loyihalar yo‘q.',
+    updatingResults: 'Natijalar yangilanmoqda...',
+    retry: 'Qayta urinish',
+    startingFrom: 'Boshlanish narxi',
+    address: 'Manzil',
+    delivery: 'Topshirish',
+    awaitingTimeline: 'Muddat kutilmoqda',
+    noMatches: 'Mos kelmadi',
+    noProjectsMatch: 'Joriy filtrlar bo‘yicha loyihalar topilmadi.',
+    widenFilters: 'Narx oralig‘ini kengaytiring, xona filtrini olib tashlang yoki kengroq manzilni qidiring.',
+    showAllLaunches: 'Barcha loyihalarni ko‘rsatish',
+    previous: 'Oldingi',
+    next: 'Keyingi',
+    refreshingApartments: 'Kvartiralar yangilanmoqda...',
+    viewResidence: 'Uyni ko‘rish',
+    noApartmentsMatch: 'Mos kvartiralar yo‘q',
+    noLiveApartments: 'Jonli kvartiralar yo‘q',
+    noApartmentsMatchTitle: 'Bu filtrlarga mos kvartiralar hali topilmadi.',
+    noLiveApartmentsTitle: 'Hozircha ommaviy kvartiralar yo‘q.',
+    noApartmentsMatchCopy: 'Ko‘proq natijalar ko‘rish uchun filtrlardan ayrimlarini yengillashtiring.',
+    noLiveApartmentsCopy: 'Katalogga ommaviy kvartiralar joylang va bu bo‘lim jonli uylarni ko‘rsata boshlaydi.',
+    clearFilters: 'Filtrlarni tozalash',
+    projectsEmptyLabel: 'Loyihalar',
+    projectsEmptyTitle: 'Hali ommaviy loyihalar yo‘q.',
+    projectsEmptyCopy: 'Backend katalogida loyihalar e’lon qilinishi bilan bu bo‘lim avtomatik to‘ldiriladi.',
+  },
+  en: {
+    sortFeatured: 'Featured',
+    sortLowestPrice: 'Lowest price',
+    sortHighestPrice: 'Highest price',
+    sortEarliestYear: 'Earliest year',
+    verifiedDeveloper: 'Verified developer',
+    areaPending: 'Area pending',
+    matchingResidences: 'Matching residences',
+    matchingResidencesTitle: 'Apartments aligned with your live filters.',
+    matchingResidencesCopy: (count) => `Showing a random cut from ${count} matching public apartments.`,
+    noMatchingResidencesCopy: 'No public apartments currently match the filter set above.',
+    freshResidences: 'Fresh residences',
+    freshResidencesTitle: 'A rotating apartment sample from the live catalog.',
+    freshResidencesCopy: (count, visibleCount) => `Showing ${Math.min(count, visibleCount)} random apartments from the active public inventory.`,
+    noFreshResidencesCopy: 'No public apartments are available to spotlight yet.',
+    sectionLabel: 'Project filters',
+    sectionTitle: 'Filter launches by address, price, room mix, and delivery pace.',
+    sectionCopy: 'Search a district or address, narrow the apartment mix you need, then page through the live project launches without leaving the homepage.',
+    addressSearchTitle: 'Address search',
+    addressSearchCopy: 'Looks across project address, district, city, and launch naming.',
+    searchLocation: 'Search location',
+    searchPlaceholder: 'Street, district, city, or project',
+    addressExamples: 'Examples: Yunusabad, Riverfront, Dream House, Sample address.',
+    priceRangeTitle: 'Price range',
+    minimumPrice: 'Minimum price',
+    maximumPrice: 'Maximum price',
+    apartmentRoomsTitle: 'Apartment rooms',
+    apartmentRoomsCopy: 'Select one or more room counts to keep only matching launches.',
+    roomOptionsPending: 'Room options will appear here when public apartments are published in the live catalog.',
+    deliveryYearTitle: 'Delivery year',
+    anyPublishedYear: 'Any published year',
+    allYears: 'All years',
+    deliveryYearsPending: 'Delivery years will appear here when projects publish a parsable year in the delivery field.',
+    activeFilters: 'Active filters',
+    tapChipToClear: 'Tap any chip to clear it.',
+    allLaunchesVisible: 'All launches are currently visible.',
+    anyAddress: 'Any address',
+    fromPrice: (value) => `From ${value}`,
+    upToPrice: (value) => `Up to ${value}`,
+    anyRoomCount: 'Any room count',
+    deliveryYearChip: (year) => `Delivery ${year}`,
+    anyDeliveryYear: 'Any delivery year',
+    resetFilters: 'Reset filters',
+    projectMatches: (count) => `${count} ${count === 1 ? 'project matches' : 'projects match'}`,
+    showingLaunches: (start, end, total) => `Showing ${start}-${end} of ${total} launches`,
+    noLaunchesMatch: 'No launches match the current filters.',
+    updatingResults: 'Updating results...',
+    retry: 'Try again',
+    startingFrom: 'Starting from',
+    address: 'Address',
+    delivery: 'Delivery',
+    awaitingTimeline: 'Awaiting timeline',
+    noMatches: 'No matches',
+    noProjectsMatch: 'No projects match the current filter set.',
+    widenFilters: 'Try widening the price range, removing a room count, or searching a broader address or district.',
+    showAllLaunches: 'Show all launches',
+    previous: 'Previous',
+    next: 'Next',
+    refreshingApartments: 'Refreshing apartments...',
+    viewResidence: 'View residence',
+    noApartmentsMatch: 'No apartments match',
+    noLiveApartments: 'No live apartments',
+    noApartmentsMatchTitle: 'No apartments match these filters yet.',
+    noLiveApartmentsTitle: 'No public apartments are available yet.',
+    noApartmentsMatchCopy: 'Clear or relax the filters above to bring matching apartments back into view.',
+    noLiveApartmentsCopy: 'Publish public apartments in the catalog and this section will begin showing random live homes.',
+    clearFilters: 'Clear filters',
+    projectsEmptyLabel: 'Projects',
+    projectsEmptyTitle: 'No public projects are active yet.',
+    projectsEmptyCopy: 'As soon as catalog projects are published in the backend, this section will populate automatically.',
+  },
+  ru: {
+    sortFeatured: 'Избранное',
+    sortLowestPrice: 'Сначала дешевле',
+    sortHighestPrice: 'Сначала дороже',
+    sortEarliestYear: 'Ближайший год',
+    verifiedDeveloper: 'Проверенный застройщик',
+    areaPending: 'Площадь уточняется',
+    matchingResidences: 'Подходящие квартиры',
+    matchingResidencesTitle: 'Квартиры, подходящие под ваши фильтры.',
+    matchingResidencesCopy: (count) => `Показываем случайную выборку из ${count} подходящих публичных квартир.`,
+    noMatchingResidencesCopy: 'Сейчас нет публичных квартир, подходящих под выбранные фильтры.',
+    freshResidences: 'Свежие квартиры',
+    freshResidencesTitle: 'Ротационная подборка квартир из живого каталога.',
+    freshResidencesCopy: (count, visibleCount) => `Показываем ${Math.min(count, visibleCount)} случайных квартир из активного публичного каталога.`,
+    noFreshResidencesCopy: 'Пока нет публичных квартир для показа.',
+    sectionLabel: 'Фильтры проектов',
+    sectionTitle: 'Фильтруйте проекты по адресу, цене, комнатности и сроку сдачи.',
+    sectionCopy: 'Ищите район или адрес, выбирайте нужный состав квартир и листайте живые проекты, не покидая главную страницу.',
+    addressSearchTitle: 'Поиск по адресу',
+    addressSearchCopy: 'Ищет по адресу проекта, району, городу и названию запуска.',
+    searchLocation: 'Поиск локации',
+    searchPlaceholder: 'Улица, район, город или проект',
+    addressExamples: 'Например: Юнусабад, Riverfront, Dream House, пример адреса.',
+    priceRangeTitle: 'Диапазон цены',
+    minimumPrice: 'Минимальная цена',
+    maximumPrice: 'Максимальная цена',
+    apartmentRoomsTitle: 'Комнаты',
+    apartmentRoomsCopy: 'Выберите одно или несколько значений, чтобы оставить только подходящие проекты.',
+    roomOptionsPending: 'Варианты комнат появятся здесь после публикации квартир в живом каталоге.',
+    deliveryYearTitle: 'Год сдачи',
+    anyPublishedYear: 'Любой опубликованный год',
+    allYears: 'Все годы',
+    deliveryYearsPending: 'Годы сдачи появятся здесь, когда в проектах будет опубликован распознаваемый год.',
+    activeFilters: 'Активные фильтры',
+    tapChipToClear: 'Нажмите на любой чип, чтобы снять фильтр.',
+    allLaunchesVisible: 'Сейчас видны все проекты.',
+    anyAddress: 'Любой адрес',
+    fromPrice: (value) => `От ${value}`,
+    upToPrice: (value) => `До ${value}`,
+    anyRoomCount: 'Любая комнатность',
+    deliveryYearChip: (year) => `Сдача ${year}`,
+    anyDeliveryYear: 'Любой год сдачи',
+    resetFilters: 'Сбросить фильтры',
+    projectMatches: (count) => `${count} ${count === 1 ? 'проект подходит' : count < 5 ? 'проекта подходят' : 'проектов подходят'}`,
+    showingLaunches: (start, end, total) => `Показано ${start}-${end} из ${total} проектов`,
+    noLaunchesMatch: 'Нет проектов, подходящих под текущие фильтры.',
+    updatingResults: 'Обновляем результаты...',
+    retry: 'Повторить',
+    startingFrom: 'Старт от',
+    address: 'Адрес',
+    delivery: 'Сдача',
+    awaitingTimeline: 'Срок уточняется',
+    noMatches: 'Нет совпадений',
+    noProjectsMatch: 'По текущему набору фильтров проекты не найдены.',
+    widenFilters: 'Расширьте диапазон цены, уберите фильтр по комнатам или попробуйте более широкий адрес или район.',
+    showAllLaunches: 'Показать все проекты',
+    previous: 'Назад',
+    next: 'Далее',
+    refreshingApartments: 'Обновляем квартиры...',
+    viewResidence: 'Открыть квартиру',
+    noApartmentsMatch: 'Нет подходящих квартир',
+    noLiveApartments: 'Нет активных квартир',
+    noApartmentsMatchTitle: 'Пока нет квартир, подходящих под эти фильтры.',
+    noLiveApartmentsTitle: 'Пока нет публичных квартир.',
+    noApartmentsMatchCopy: 'Очистите или ослабьте фильтры выше, чтобы вернуть квартиры в выдачу.',
+    noLiveApartmentsCopy: 'Опубликуйте квартиры в каталоге, и этот блок начнёт показывать живые объекты.',
+    clearFilters: 'Очистить фильтры',
+    projectsEmptyLabel: 'Проекты',
+    projectsEmptyTitle: 'Пока нет активных публичных проектов.',
+    projectsEmptyCopy: 'Как только проекты будут опубликованы в backend-каталоге, этот блок заполнится автоматически.',
+  },
+};
+
+function getSortOptions(copy: ProjectFilterCopy): { value: PublicProjectSort; label: string }[] {
+  return [
+    { value: 'featured', label: copy.sortFeatured },
+    { value: 'price_asc', label: copy.sortLowestPrice },
+    { value: 'price_desc', label: copy.sortHighestPrice },
+    { value: 'delivery_asc', label: copy.sortEarliestYear },
+  ];
+}
 
 function numeric(value: string | number | null | undefined) {
   const resolved = typeof value === 'number' ? value : Number(value ?? 0);
@@ -182,6 +474,7 @@ function RangeControl({ id, label, min, max, step, value, valueLabel, onChange }
 }
 
 export function ProjectFilterPanel({
+  locale,
   projects,
   companies,
   totalCount,
@@ -191,6 +484,8 @@ export function ProjectFilterPanel({
   apartments,
   apartmentCount,
 }: ProjectFilterPanelProps) {
+  const copy = projectFilterCopy[locale];
+  const sortOptions = useMemo(() => getSortOptions(copy), [copy]);
   const companyMap = useMemo(() => new Map(companies.map((company) => [company.id, company.name])), [companies]);
   const resolvedPriceBounds = useMemo(
     () => getResolvedPriceBounds(priceBounds, projects),
@@ -378,10 +673,10 @@ export function ProjectFilterPanel({
     () =>
       pageProjects.map((project) => ({
         ...project,
-        companyName: companyMap.get(project.company) ?? 'Verified developer',
+        companyName: companyMap.get(project.company) ?? copy.verifiedDeveloper,
         locationName: project.district?.name ?? project.city.name,
       })),
-    [companyMap, pageProjects],
+    [companyMap, copy.verifiedDeveloper, pageProjects],
   );
 
   const normalizedApartments = useMemo<NormalizedApartment[]>(
@@ -389,9 +684,9 @@ export function ProjectFilterPanel({
       showcaseApartments.map((apartment) => ({
         ...apartment,
         locationName: apartment.district?.name ?? apartment.city.name,
-        areaLabel: numeric(apartment.size_sqm) > 0 ? `${numeric(apartment.size_sqm).toFixed(0)} sqm` : 'Area pending',
+        areaLabel: numeric(apartment.size_sqm) > 0 ? `${numeric(apartment.size_sqm).toFixed(0)} sqm` : copy.areaPending,
       })),
-    [showcaseApartments],
+    [copy.areaPending, showcaseApartments],
   );
 
   const addressFilterValue = addressQuery.trim();
@@ -428,22 +723,22 @@ export function ProjectFilterPanel({
   function getShowcaseHeading() {
     if (hasActiveFilters) {
       return {
-        label: 'Matching residences',
-        title: 'Apartments aligned with your live filters.',
+        label: copy.matchingResidences,
+        title: copy.matchingResidencesTitle,
         copy:
           showcaseApartmentCount > 0
-            ? `Showing a random cut from ${showcaseApartmentCount} matching public apartments.`
-            : 'No public apartments currently match the filter set above.',
+            ? copy.matchingResidencesCopy(showcaseApartmentCount)
+            : copy.noMatchingResidencesCopy,
       };
     }
 
     return {
-      label: 'Fresh residences',
-      title: 'A rotating apartment sample from the live catalog.',
+      label: copy.freshResidences,
+      title: copy.freshResidencesTitle,
       copy:
         showcaseApartmentCount > 0
-          ? `Showing ${Math.min(showcaseApartmentCount, SHOWCASE_APARTMENTS_COUNT)} random apartments from the active public inventory.`
-          : 'No public apartments are available to spotlight yet.',
+          ? copy.freshResidencesCopy(showcaseApartmentCount, SHOWCASE_APARTMENTS_COUNT)
+          : copy.noFreshResidencesCopy,
     };
   }
 
@@ -453,12 +748,9 @@ export function ProjectFilterPanel({
     <section className="project-filter-section" id="projects">
       <div className="site-shell project-filter-shell">
         <div className="project-filter-head">
-          <p className="section-label">Project filters</p>
-          <h2 className="section-title">Filter launches by address, price, room mix, and delivery pace.</h2>
-          <p className="section-copy">
-            Search a district or address, narrow the apartment mix you need, then page through the live project
-            launches without leaving the homepage.
-          </p>
+          <p className="section-label">{copy.sectionLabel}</p>
+          <h2 className="section-title">{copy.sectionTitle}</h2>
+          <p className="section-copy">{copy.sectionCopy}</p>
         </div>
 
         {hasProjectCatalog ? (
@@ -467,18 +759,18 @@ export function ProjectFilterPanel({
               <div className="project-filter-controls-grid">
                 <div className="project-filter-control-panel">
                   <div className="project-filter-control-copy">
-                    <h3>Address search</h3>
-                    <span>Looks across project address, district, city, and launch naming.</span>
+                    <h3>{copy.addressSearchTitle}</h3>
+                    <span>{copy.addressSearchCopy}</span>
                   </div>
 
                   <label className="project-filter-search-shell" htmlFor="project-filter-address">
-                    <span className="project-filter-search-label">Search location</span>
+                    <span className="project-filter-search-label">{copy.searchLocation}</span>
                     <input
                       id="project-filter-address"
                       className="project-filter-search-input"
                       type="search"
                       value={addressQuery}
-                      placeholder="Street, district, city, or project"
+                      placeholder={copy.searchPlaceholder}
                       onChange={(event) => {
                         setAddressQuery(event.target.value);
                         setCurrentPage(1);
@@ -488,12 +780,12 @@ export function ProjectFilterPanel({
                     />
                   </label>
 
-                  <p className="project-filter-empty-note">Examples: Yunusabad, Riverfront, Dream House, Sample address.</p>
+                  <p className="project-filter-empty-note">{copy.addressExamples}</p>
                 </div>
 
                 <div className="project-filter-control-panel">
                   <div className="project-filter-control-copy">
-                    <h3>Price range</h3>
+                    <h3>{copy.priceRangeTitle}</h3>
                     <span>
                       {formatCurrency(minimumPrice, filterCurrency)} to {formatCurrency(maximumPrice, filterCurrency)}
                     </span>
@@ -502,7 +794,7 @@ export function ProjectFilterPanel({
                   <div className="project-filter-range-stack">
                     <RangeControl
                       id="project-filter-min-price"
-                      label="Minimum price"
+                      label={copy.minimumPrice}
                       min={resolvedPriceBounds.min}
                       max={resolvedPriceBounds.max}
                       step={PRICE_STEP}
@@ -518,7 +810,7 @@ export function ProjectFilterPanel({
 
                     <RangeControl
                       id="project-filter-max-price"
-                      label="Maximum price"
+                      label={copy.maximumPrice}
                       min={resolvedPriceBounds.min}
                       max={resolvedPriceBounds.max}
                       step={PRICE_STEP}
@@ -537,8 +829,8 @@ export function ProjectFilterPanel({
                 <div className="project-filter-control-panel">
                   <div className="project-filter-subgroup">
                     <div className="project-filter-control-copy">
-                      <h3>Apartment rooms</h3>
-                      <span>Select one or more room counts to keep only matching launches.</span>
+                      <h3>{copy.apartmentRoomsTitle}</h3>
+                      <span>{copy.apartmentRoomsCopy}</span>
                     </div>
 
                     {availableRooms.length ? (
@@ -560,16 +852,14 @@ export function ProjectFilterPanel({
                         ))}
                       </div>
                     ) : (
-                      <p className="project-filter-empty-note">
-                        Room options will appear here when public apartments are published in the live catalog.
-                      </p>
+                      <p className="project-filter-empty-note">{copy.roomOptionsPending}</p>
                     )}
                   </div>
 
                   <div className="project-filter-subgroup">
                     <div className="project-filter-control-copy">
-                      <h3>Delivery year</h3>
-                      <span>{selectedYear ?? 'Any published year'}</span>
+                      <h3>{copy.deliveryYearTitle}</h3>
+                      <span>{selectedYear ?? copy.anyPublishedYear}</span>
                     </div>
 
                     {availableYears.length ? (
@@ -584,7 +874,7 @@ export function ProjectFilterPanel({
                             setShowcaseError(null);
                           }}
                         >
-                          All years
+                          {copy.allYears}
                         </button>
 
                         {availableYears.map((year) => (
@@ -604,9 +894,7 @@ export function ProjectFilterPanel({
                         ))}
                       </div>
                     ) : (
-                      <p className="project-filter-empty-note">
-                        Delivery years will appear here when projects publish a parsable year in the delivery field.
-                      </p>
+                      <p className="project-filter-empty-note">{copy.deliveryYearsPending}</p>
                     )}
                   </div>
                 </div>
@@ -614,8 +902,8 @@ export function ProjectFilterPanel({
 
               <div className="project-filter-active-row">
                 <div className="project-filter-active-copy">
-                  <p>Active filters</p>
-                  <span>{hasActiveFilters ? 'Tap any chip to clear it.' : 'All launches are currently visible.'}</span>
+                  <p>{copy.activeFilters}</p>
+                  <span>{hasActiveFilters ? copy.tapChipToClear : copy.allLaunchesVisible}</span>
                 </div>
 
                 <div className="project-filter-active-list">
@@ -634,7 +922,7 @@ export function ProjectFilterPanel({
                       Address: {addressFilterValue}
                     </button>
                   ) : (
-                    <span className="project-filter-chip project-filter-chip-static">Any address</span>
+                    <span className="project-filter-chip project-filter-chip-static">{copy.anyAddress}</span>
                   )}
 
                   <button
@@ -648,7 +936,7 @@ export function ProjectFilterPanel({
                     }}
                     disabled={minimumPrice === resolvedPriceBounds.min}
                   >
-                    From {formatCurrency(minimumPrice, filterCurrency)}
+                    {copy.fromPrice(formatCurrency(minimumPrice, filterCurrency))}
                   </button>
 
                   <button
@@ -662,7 +950,7 @@ export function ProjectFilterPanel({
                     }}
                     disabled={maximumPrice === resolvedPriceBounds.max}
                   >
-                    Up to {formatCurrency(maximumPrice, filterCurrency)}
+                    {copy.upToPrice(formatCurrency(maximumPrice, filterCurrency))}
                   </button>
 
                   {selectedRooms.length ? (
@@ -682,7 +970,7 @@ export function ProjectFilterPanel({
                       </button>
                     ))
                   ) : (
-                    <span className="project-filter-chip project-filter-chip-static">Any room count</span>
+                    <span className="project-filter-chip project-filter-chip-static">{copy.anyRoomCount}</span>
                   )}
 
                   {selectedYear !== null ? (
@@ -696,22 +984,22 @@ export function ProjectFilterPanel({
                         setShowcaseError(null);
                       }}
                     >
-                      Delivery {selectedYear}
+                      {copy.deliveryYearChip(selectedYear)}
                     </button>
                   ) : (
-                    <span className="project-filter-chip project-filter-chip-static">Any delivery year</span>
+                    <span className="project-filter-chip project-filter-chip-static">{copy.anyDeliveryYear}</span>
                   )}
                 </div>
 
                 <button type="button" className="project-filter-reset" onClick={resetFilters}>
-                  Reset filters
+                  {copy.resetFilters}
                 </button>
               </div>
 
               <div className="project-filter-sort-row">
                 <div className="project-filter-results-copy">
                   <strong>{visibleProjectCount}</strong>
-                  <span>{visibleProjectCount === 1 ? 'project matches' : 'projects match'}</span>
+                  <span>{copy.projectMatches(visibleProjectCount)}</span>
                 </div>
 
                 <div className="project-filter-sort-list">
@@ -736,18 +1024,18 @@ export function ProjectFilterPanel({
             <div className="project-filter-status" aria-live="polite">
               <p className="project-filter-pagination-copy">
                 {visibleProjectCount > 0
-                  ? `Showing ${pageStart}-${pageEnd} of ${visibleProjectCount} launches`
-                  : 'No launches match the current filters.'}
+                  ? copy.showingLaunches(pageStart, pageEnd, visibleProjectCount)
+                  : copy.noLaunchesMatch}
               </p>
 
-              {isLoading ? <p className="project-filter-feedback">Updating results...</p> : null}
+              {isLoading ? <p className="project-filter-feedback">{copy.updatingResults}</p> : null}
             </div>
 
             {error ? (
               <div className="project-filter-feedback project-filter-feedback-error" role="status">
                 <span>{error}</span>
                 <button type="button" className="project-filter-reset" onClick={retryFetch}>
-                  Try again
+                  {copy.retry}
                 </button>
               </div>
             ) : null}
@@ -776,16 +1064,16 @@ export function ProjectFilterPanel({
                       <p>{project.headline}</p>
                       <div className="project-meta-grid">
                         <div>
-                          <span>Starting from</span>
+                          <span>{copy.startingFrom}</span>
                           <strong>{formatCurrency(project.starting_price, project.currency)}</strong>
                         </div>
                         <div>
-                          <span>Address</span>
+                          <span>{copy.address}</span>
                           <strong>{project.address || project.location_label || project.locationName}</strong>
                         </div>
                         <div>
-                          <span>Delivery</span>
-                          <strong>{project.delivery_window || 'Awaiting timeline'}</strong>
+                          <span>{copy.delivery}</span>
+                          <strong>{project.delivery_window || copy.awaitingTimeline}</strong>
                         </div>
                       </div>
                     </div>
@@ -793,11 +1081,11 @@ export function ProjectFilterPanel({
                 ))
               ) : (
                 <article className="empty-card premium-surface project-filter-empty">
-                  <p className="section-label">No matches</p>
-                  <h3>No projects match the current filter set.</h3>
-                  <p>Try widening the price range, removing a room count, or searching a broader address or district.</p>
+                  <p className="section-label">{copy.noMatches}</p>
+                  <h3>{copy.noProjectsMatch}</h3>
+                  <p>{copy.widenFilters}</p>
                   <button type="button" className="project-filter-reset project-filter-reset-inline" onClick={resetFilters}>
-                    Show all launches
+                    {copy.showAllLaunches}
                   </button>
                 </article>
               )}
@@ -812,7 +1100,7 @@ export function ProjectFilterPanel({
                     onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                     disabled={currentPage === 1 || isLoading}
                   >
-                    Previous
+                    {copy.previous}
                   </button>
 
                   {paginationItems.map((item) =>
@@ -840,7 +1128,7 @@ export function ProjectFilterPanel({
                     onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                     disabled={currentPage === totalPages || isLoading}
                   >
-                    Next
+                    {copy.next}
                   </button>
                 </div>
               </div>
@@ -854,14 +1142,14 @@ export function ProjectFilterPanel({
                   <span>{showcaseHeading.copy}</span>
                 </div>
 
-                {isShowcaseLoading ? <p className="project-filter-feedback">Refreshing apartments...</p> : null}
+                {isShowcaseLoading ? <p className="project-filter-feedback">{copy.refreshingApartments}</p> : null}
               </div>
 
               {showcaseError ? (
                 <div className="project-filter-feedback project-filter-feedback-error" role="status">
                   <span>{showcaseError}</span>
                   <button type="button" className="project-filter-reset" onClick={retryFetch}>
-                    Try again
+                    {copy.retry}
                   </button>
                 </div>
               ) : null}
@@ -895,24 +1183,25 @@ export function ProjectFilterPanel({
                           <span>{apartment.project_name}</span>
                         </div>
 
-                        <a href={`/apartments/${apartment.slug}`} className="apartment-showcase-link">
-                          View residence
+                        <a
+                          href={buildLocalizedPath(locale, `/apartments/${apartment.slug}`)}
+                          className="apartment-showcase-link"
+                        >
+                          {copy.viewResidence}
                         </a>
                       </div>
                     </article>
                   ))
                 ) : (
                   <article className="empty-card premium-surface apartment-showcase-empty">
-                    <p className="section-label">{hasActiveFilters ? 'No apartments match' : 'No live apartments'}</p>
-                    <h3>{hasActiveFilters ? 'No apartments match these filters yet.' : 'No public apartments are available yet.'}</h3>
+                    <p className="section-label">{hasActiveFilters ? copy.noApartmentsMatch : copy.noLiveApartments}</p>
+                    <h3>{hasActiveFilters ? copy.noApartmentsMatchTitle : copy.noLiveApartmentsTitle}</h3>
                     <p>
-                      {hasActiveFilters
-                        ? 'Clear or relax the filters above to bring matching apartments back into view.'
-                        : 'Publish public apartments in the catalog and this section will begin showing random live homes.'}
+                      {hasActiveFilters ? copy.noApartmentsMatchCopy : copy.noLiveApartmentsCopy}
                     </p>
                     {hasActiveFilters ? (
                       <button type="button" className="project-filter-reset project-filter-reset-inline" onClick={resetFilters}>
-                        Clear filters
+                        {copy.clearFilters}
                       </button>
                     ) : null}
                   </article>
@@ -922,9 +1211,9 @@ export function ProjectFilterPanel({
           </>
         ) : (
           <article className="empty-card premium-surface">
-            <p className="section-label">Projects</p>
-            <h3>No public projects are active yet.</h3>
-            <p>As soon as catalog projects are published in the backend, this section will populate automatically.</p>
+            <p className="section-label">{copy.projectsEmptyLabel}</p>
+            <h3>{copy.projectsEmptyTitle}</h3>
+            <p>{copy.projectsEmptyCopy}</p>
           </article>
         )}
       </div>

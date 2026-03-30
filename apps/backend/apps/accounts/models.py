@@ -1,5 +1,6 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.conf import settings
 from django.db import models
 
 from apps.common.models import TimeStampedModel
@@ -85,7 +86,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
 
 class UserProfile(TimeStampedModel):
     user = models.OneToOneField("accounts.User", on_delete=models.CASCADE, related_name="profile")
-    preferred_language = models.CharField(max_length=16, default="en")
+    preferred_language = models.CharField(max_length=16, default=settings.UYTOP_DEFAULT_LANGUAGE)
     city = models.CharField(max_length=128, blank=True)
     district = models.CharField(max_length=128, blank=True)
 

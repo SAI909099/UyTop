@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.locale import get_request_language
 from apps.interactions.services import record_recently_viewed
 from apps.listings.models import Listing, ListingModerationStatus, ListingStatus
 from apps.listings.selectors import apply_bounds_filter, apply_listing_filters, visible_listings_queryset
@@ -26,7 +27,12 @@ class ListingListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = visible_listings_queryset(self.request.user)
-        return apply_listing_filters(queryset, self.request.query_params, user=self.request.user)
+        return apply_listing_filters(
+            queryset,
+            self.request.query_params,
+            user=self.request.user,
+            language=get_request_language(self.request),
+        )
 
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -134,5 +140,10 @@ class MapListingPreviewView(generics.ListAPIView):
 
     def get_queryset(self):
         queryset = visible_listings_queryset(self.request.user)
-        queryset = apply_listing_filters(queryset, self.request.query_params, user=self.request.user)
+        queryset = apply_listing_filters(
+            queryset,
+            self.request.query_params,
+            user=self.request.user,
+            language=get_request_language(self.request),
+        )
         return apply_bounds_filter(queryset, self.request.query_params)

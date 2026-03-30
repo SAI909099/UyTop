@@ -2,11 +2,16 @@
 
 import { useMemo, useState } from 'react';
 
-import { createProject, updateProject } from '@/lib/api/catalog';
-import type { CatalogCompany, CatalogProject, LookupOption } from '@/types/api';
+import { archiveProject, createProject, restoreProject, updateProject } from '@/lib/api/catalog';
+import { adminDictionary, getBrowserLocale, SUPPORTED_LOCALES, type LocaleCode } from '@/lib/i18n';
+import type { CatalogCompany, CatalogProject, LookupOption, TranslationPayload } from '@/types/api';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+
+import { MediaUploadField } from './media-upload-field';
+import { TranslationEditor } from './translation-editor';
+import { createEmptyTranslations, getSourceFieldValue, pickTranslations } from './translation-utils';
 
 type ProjectManagerProps = {
   companies: CatalogCompany[];
@@ -17,6 +22,8 @@ type ProjectManagerProps = {
 
 type ProjectFormState = {
   selectedSlug: string;
+  source_language: LocaleCode;
+  translations: TranslationPayload;
   company_id: string;
   name: string;
   headline: string;
@@ -32,28 +39,42 @@ type ProjectFormState = {
   is_active: boolean;
 };
 
-const emptyState: ProjectFormState = {
-  selectedSlug: '',
-  company_id: '',
-  name: '',
-  headline: '',
-  description: '',
-  city_id: '',
-  district_id: '',
-  address: '',
-  location_label: '',
-  starting_price: '',
-  currency: 'USD',
-  delivery_window: '',
-  hero_image_url: '',
-  is_active: true,
-};
+const TRANSLATION_FIELDS = [
+  { name: 'name', label: 'Project name' },
+  { name: 'headline', label: 'Headline' },
+  { name: 'description', label: 'Description', rows: 5 },
+  { name: 'address', label: 'Address' },
+  { name: 'location_label', label: 'Location label' },
+  { name: 'delivery_window', label: 'Delivery window' },
+] as const;
+
+function buildEmptyState(): ProjectFormState {
+  return {
+    selectedSlug: '',
+    source_language: 'uz',
+    translations: createEmptyTranslations(TRANSLATION_FIELDS.map((field) => field.name)),
+    company_id: '',
+    name: '',
+    headline: '',
+    description: '',
+    city_id: '',
+    district_id: '',
+    address: '',
+    location_label: '',
+    starting_price: '',
+    currency: 'USD',
+    delivery_window: '',
+    hero_image_url: '',
+    is_active: true,
+  };
+}
 
 export function ProjectManager({ companies, projects, cities, districts }: ProjectManagerProps) {
   const [items, setItems] = useState(projects);
-  const [form, setForm] = useState<ProjectFormState>(emptyState);
+  const [form, setForm] = useState<ProjectFormState>(buildEmptyState);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const dictionary = adminDictionary[getBrowserLocale()];
 
   const selectedProject = useMemo(
     () => items.find((item) => item.slug === form.selectedSlug) ?? null,
@@ -67,26 +88,36 @@ export function ProjectManager({ companies, projects, cities, districts }: Proje
 
   function hydrate(project: CatalogProject | null) {
     if (!project) {
-      setForm(emptyState);
+      setForm(buildEmptyState());
       return;
     }
 
     setForm({
       selectedSlug: project.slug,
+      source_language: project.source_language,
+      translations: pickTranslations(project, TRANSLATION_FIELDS.map((field) => field.name)),
       company_id: String(project.company),
-      name: project.name,
-      headline: project.headline ?? '',
-      description: project.description ?? '',
+      name: getSourceFieldValue(project, 'name'),
+      headline: getSourceFieldValue(project, 'headline'),
+      description: getSourceFieldValue(project, 'description'),
       city_id: String(project.city.id),
       district_id: project.district ? String(project.district.id) : '',
-      address: project.address ?? '',
-      location_label: project.location_label ?? '',
+      address: getSourceFieldValue(project, 'address'),
+      location_label: getSourceFieldValue(project, 'location_label'),
       starting_price: project.starting_price ?? '',
       currency: project.currency ?? 'USD',
-      delivery_window: project.delivery_window ?? '',
+      delivery_window: getSourceFieldValue(project, 'delivery_window'),
       hero_image_url: project.hero_image_url ?? '',
-      is_active: true,
+      is_active: project.is_active ?? true,
     });
+  }
+
+  function upsertProject(saved: CatalogProject) {
+    const nextItems = selectedProject
+      ? items.map((item) => (item.slug === selectedProject.slug ? saved : item))
+      : [saved, ...items];
+    setItems(nextItems);
+    hydrate(saved);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -96,6 +127,8 @@ export function ProjectManager({ companies, projects, cities, districts }: Proje
 
     try {
       const payload = {
+        source_language: form.source_language,
+        translations: form.translations,
         company_id: Number(form.company_id),
         name: form.name,
         headline: form.headline,
@@ -112,13 +145,40 @@ export function ProjectManager({ companies, projects, cities, districts }: Proje
       };
 
       const saved = selectedProject ? await updateProject(selectedProject.slug, payload) : await createProject(payload);
-      const nextItems = selectedProject
-        ? items.map((item) => (item.slug === selectedProject.slug ? saved : item))
-        : [saved, ...items];
-      setItems(nextItems);
-      hydrate(saved);
+      upsertProject(saved);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Failed to save project.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleArchiveToggle() {
+    if (!selectedProject) {
+      return;
+    }
+
+    const nextActiveState = !(selectedProject.is_active ?? true);
+    const confirmed = window.confirm(
+      nextActiveState
+        ? `Restore ${selectedProject.name} so it becomes active again?`
+        : `Archive ${selectedProject.name}? Archived projects stay available in admin but disappear from public catalog lists.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      const saved = nextActiveState
+        ? await restoreProject(selectedProject.slug)
+        : await archiveProject(selectedProject.slug);
+      upsertProject(saved);
+    } catch (archiveError) {
+      setError(archiveError instanceof Error ? archiveError.message : 'Failed to update project status.');
     } finally {
       setSaving(false);
     }
@@ -147,7 +207,10 @@ export function ProjectManager({ companies, projects, cities, districts }: Proje
                 onClick={() => hydrate(project)}
               >
                 <strong>{project.name}</strong>
-                <span>{project.location_label}</span>
+                <span>
+                  {project.location_label} · {project.translation_state}
+                  {project.is_active ? '' : ' · archived'}
+                </span>
               </button>
             ))}
           </div>
@@ -161,23 +224,58 @@ export function ProjectManager({ companies, projects, cities, districts }: Proje
               <p className="catalog-eyebrow">Create or edit</p>
               <h2>{selectedProject ? `Edit ${selectedProject.name}` : 'New project'}</h2>
             </div>
+            {selectedProject ? (
+              <div className="catalog-inline-actions">
+                <Button
+                  type="button"
+                  onClick={handleArchiveToggle}
+                  disabled={saving}
+                  style={selectedProject.is_active ? { background: 'var(--danger)' } : { background: 'var(--surface-muted)', color: 'var(--text)' }}
+                >
+                  {selectedProject.is_active ? 'Archive project' : 'Restore project'}
+                </Button>
+              </div>
+            ) : null}
           </div>
 
+          {selectedProject ? (
+            <p className="catalog-status-pill">
+              {dictionary.translationState}: {selectedProject.translation_state}
+            </p>
+          ) : null}
+
           <div className="catalog-two-column">
+            <label className="catalog-field">
+              <span>{dictionary.sourceLanguage}</span>
+              <select
+                value={form.source_language}
+                onChange={(event) => setForm({ ...form, source_language: event.target.value as LocaleCode })}
+              >
+                {SUPPORTED_LOCALES.map((locale) => (
+                  <option key={locale} value={locale}>
+                    {locale}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="catalog-field">
               <span>Company</span>
               <select value={form.company_id} onChange={(event) => setForm({ ...form, company_id: event.target.value })} required>
                 <option value="">Select company</option>
                 {companies.map((company) => (
-                  <option key={company.id} value={company.id}>{company.name}</option>
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                    {company.is_active ? '' : ' (archived)'}
+                  </option>
                 ))}
               </select>
             </label>
-            <label className="catalog-field">
-              <span>Project name</span>
-              <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
-            </label>
           </div>
+
+          <label className="catalog-field">
+            <span>Project name</span>
+            <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
+          </label>
 
           <label className="catalog-field">
             <span>Headline</span>
@@ -236,10 +334,21 @@ export function ProjectManager({ companies, projects, cities, districts }: Proje
             </label>
           </div>
 
-          <label className="catalog-field">
-            <span>Hero image URL</span>
-            <input value={form.hero_image_url} onChange={(event) => setForm({ ...form, hero_image_url: event.target.value })} />
-          </label>
+          <MediaUploadField
+            label="Hero image URL"
+            value={form.hero_image_url}
+            onChange={(hero_image_url) => setForm((current) => ({ ...current, hero_image_url }))}
+            previewLabel={form.name ? `${form.name} hero image` : 'Project hero image'}
+            disabled={saving}
+          />
+
+          <TranslationEditor
+            title={dictionary.manualTranslations}
+            sourceLanguage={form.source_language}
+            translations={form.translations}
+            fields={TRANSLATION_FIELDS.map((field) => ({ ...field }))}
+            onChange={(translations) => setForm({ ...form, translations })}
+          />
 
           <label className="catalog-checkbox-row">
             <input type="checkbox" checked={form.is_active} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} />

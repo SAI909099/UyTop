@@ -1,7 +1,7 @@
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Point
 
-from apps.common.models import TimeStampedModel
+from apps.common.models import TimeStampedModel, TranslatableContentModel
 from apps.common.utils import generate_unique_slug
 
 
@@ -55,16 +55,21 @@ class Amenity(TimeStampedModel):
         return self.title
 
 
-class Listing(TimeStampedModel):
+class Listing(TranslatableContentModel, TimeStampedModel):
+    TRANSLATABLE_FIELDS = ("title", "description", "address")
+
     owner = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="listings")
     purpose = models.CharField(max_length=16, choices=ListingPurpose.choices)
     category = models.CharField(max_length=32, choices=ListingCategory.choices)
     slug = models.SlugField(max_length=255, unique=True, blank=True)
     title = models.CharField(max_length=255)
+    title_translations = models.JSONField(default=dict, blank=True)
     description = models.TextField(blank=True)
+    description_translations = models.JSONField(default=dict, blank=True)
     price = models.DecimalField(max_digits=14, decimal_places=2)
     currency = models.CharField(max_length=8, default="UZS")
     address = models.CharField(max_length=255)
+    address_translations = models.JSONField(default=dict, blank=True)
     city = models.ForeignKey("locations.LocationCity", on_delete=models.PROTECT, related_name="listings")
     district = models.ForeignKey(
         "locations.LocationDistrict",
