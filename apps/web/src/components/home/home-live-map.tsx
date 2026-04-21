@@ -10,7 +10,7 @@ import type { PublicApartmentDetail, PublicMapApartment } from "@/types/home";
 type HomeLiveMapProps = {
   items: PublicMapApartment[];
   locale: LocaleCode;
-  variant?: "preview" | "fullscreen";
+  variant?: "preview" | "fullscreen" | "hero";
   autoLocate?: boolean;
 };
 
@@ -608,9 +608,11 @@ export function HomeLiveMap({ items, locale, variant = "preview", autoLocate = f
   const selectedApartment = apartments.find((item) => item.id === selectedId) ?? null;
   const selectedDetail = selectedApartment && detailData?.slug === selectedApartment.slug ? detailData : null;
   const visibleItems = getVisibleItems(apartments, mapViewport);
+  const isHero = variant === "hero";
   const isPreview = variant === "preview";
-  const canLocateUser = variant === "fullscreen";
-  const fitMaxZoom = isPreview ? 13 : 14;
+  const isFullscreen = variant === "fullscreen";
+  const canLocateUser = isFullscreen;
+  const fitMaxZoom = isHero ? 15 : isPreview ? 13 : 14;
   const mapZoom = mapViewport?.zoom ?? DISTRICT_VIEW_MAX_ZOOM;
   const copy = homeLiveMapCopy[locale];
   const mapPath = buildLocalizedPath(locale, "/map");
@@ -998,56 +1000,60 @@ export function HomeLiveMap({ items, locale, variant = "preview", autoLocate = f
 
   return (
     <div className={`home-map-shell home-map-shell-${variant}${detailOpen ? " home-map-shell-detail-open" : ""}`}>
-      <div className={`home-map-stage${isPreview ? "" : " home-map-stage-fullscreen"}`}>
+      <div className={`home-map-stage${isFullscreen ? " home-map-stage-fullscreen" : ""}`}>
         <div className="home-map-layer-glow" />
         <div ref={mapRef} className="home-map-canvas" />
 
-        <div className="home-map-status-bar">
-          <span className="home-map-status-pill">
-            {aggregationMode === "district"
-              ? copy.districtTotals
-              : aggregationMode === "radius"
-                ? copy.nearbyHomes
-                : copy.exactHomes}
-          </span>
-          <span className="home-map-status-pill">{copy.visibleHomes(visibleItems.length)}</span>
-        </div>
+        {isHero ? null : (
+          <div className="home-map-status-bar">
+            <span className="home-map-status-pill">
+              {aggregationMode === "district"
+                ? copy.districtTotals
+                : aggregationMode === "radius"
+                  ? copy.nearbyHomes
+                  : copy.exactHomes}
+            </span>
+            <span className="home-map-status-pill">{copy.visibleHomes(visibleItems.length)}</span>
+          </div>
+        )}
 
-        <div className="home-map-controls">
-          <button
-            type="button"
-            className="home-map-control-button"
-            aria-label={copy.zoomIn}
-            onClick={() => leafletMapRef.current?.zoomIn()}
-          >
-            +
-          </button>
-          <button
-            type="button"
-            className="home-map-control-button"
-            aria-label={copy.zoomOut}
-            onClick={() => leafletMapRef.current?.zoomOut()}
-          >
-            -
-          </button>
-          <button
-            type="button"
-            className="home-map-control-button home-map-control-button-wide"
-            onClick={handleShowMap}
-          >
-            {copy.showMap}
-          </button>
-          {canLocateUser ? (
+        {isHero ? null : (
+          <div className="home-map-controls">
+            <button
+              type="button"
+              className="home-map-control-button"
+              aria-label={copy.zoomIn}
+              onClick={() => leafletMapRef.current?.zoomIn()}
+            >
+              +
+            </button>
+            <button
+              type="button"
+              className="home-map-control-button"
+              aria-label={copy.zoomOut}
+              onClick={() => leafletMapRef.current?.zoomOut()}
+            >
+              -
+            </button>
             <button
               type="button"
               className="home-map-control-button home-map-control-button-wide"
-              onClick={requestUserLocation}
-              disabled={locationStatus === "requesting"}
+              onClick={handleShowMap}
             >
-              {locationStatus === "requesting" ? copy.locating : copy.nearMe}
+              {copy.showMap}
             </button>
-          ) : null}
-        </div>
+            {canLocateUser ? (
+              <button
+                type="button"
+                className="home-map-control-button home-map-control-button-wide"
+                onClick={requestUserLocation}
+                disabled={locationStatus === "requesting"}
+              >
+                {locationStatus === "requesting" ? copy.locating : copy.nearMe}
+              </button>
+            ) : null}
+          </div>
+        )}
 
         {locationFeedback ? (
           <div
@@ -1059,7 +1065,7 @@ export function HomeLiveMap({ items, locale, variant = "preview", autoLocate = f
           </div>
         ) : null}
 
-        {!selectedApartment ? (
+        {!selectedApartment && !isHero ? (
           <div className={`home-map-hint-bar${isPreview ? "" : " home-map-hint-bar-fullscreen"}`}>
             <span className="home-map-hint-pill">
               {aggregationMode === "district"
@@ -1083,7 +1089,7 @@ export function HomeLiveMap({ items, locale, variant = "preview", autoLocate = f
         ) : null}
 
         {selectedApartment ? (
-          <article className="home-map-selected-card">
+          <article className={`home-map-selected-card${isHero ? " home-map-selected-card-hero" : ""}`}>
             <div className="home-map-selected-media">
               {selectedApartment.primary_image ? (
                 <img src={selectedApartment.primary_image} alt={selectedApartment.title} />
@@ -1109,7 +1115,7 @@ export function HomeLiveMap({ items, locale, variant = "preview", autoLocate = f
                 <span>{selectedApartment.company_name}</span>
               </div>
 
-              {selectedApartment.payment_options.length ? (
+              {!isHero && selectedApartment.payment_options.length ? (
                 <div className="home-map-selected-payments">
                   {selectedApartment.payment_options.slice(0, 3).map((option) => (
                     <span key={option.payment_type}>{formatLabel(option.payment_type)}</span>
@@ -1117,7 +1123,7 @@ export function HomeLiveMap({ items, locale, variant = "preview", autoLocate = f
                 </div>
               ) : null}
 
-              <div className="home-map-selected-actions">
+              <div className={`home-map-selected-actions${isHero ? " home-map-selected-actions-hero" : ""}`}>
                 <div className="home-map-selected-action-group">
                   <button
                     type="button"
@@ -1131,23 +1137,25 @@ export function HomeLiveMap({ items, locale, variant = "preview", autoLocate = f
                   </button>
                   <a
                     href={buildLocalizedPath(locale, `/apartments/${selectedApartment.slug}`)}
-                    className="home-map-inline-button"
+                    className={isHero ? "home-map-action-button" : "home-map-inline-button"}
                   >
                     {copy.viewPage}
                   </a>
-                  <button
-                    type="button"
-                    className="home-map-action-button"
-                    onClick={() => {
-                      setDetailOpen(true);
-                      if (loadedDetailSlugRef.current !== selectedApartment.slug) {
-                        setDetailData(null);
-                        setDetailStatus("idle");
-                      }
-                    }}
-                  >
-                    {copy.more}
-                  </button>
+                  {isHero ? null : (
+                    <button
+                      type="button"
+                      className="home-map-action-button"
+                      onClick={() => {
+                        setDetailOpen(true);
+                        if (loadedDetailSlugRef.current !== selectedApartment.slug) {
+                          setDetailData(null);
+                          setDetailStatus("idle");
+                        }
+                      }}
+                    >
+                      {copy.more}
+                    </button>
+                  )}
                 </div>
                 <small>{getLocationLabel(selectedDetail)}</small>
               </div>
@@ -1155,7 +1163,7 @@ export function HomeLiveMap({ items, locale, variant = "preview", autoLocate = f
           </article>
         ) : null}
 
-        {detailOpen && selectedApartment ? (
+        {detailOpen && selectedApartment && !isHero ? (
           <>
             <button
               type="button"

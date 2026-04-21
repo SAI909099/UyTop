@@ -24,6 +24,16 @@ export type ApiListResponse<T> = {
   results: T[];
 };
 
+export type AdminPaginatedResponse<T> = {
+  count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  next_page: number | null;
+  previous_page: number | null;
+  results: T[];
+};
+
 export type LookupOption = {
   id: number;
   name: string;
@@ -154,4 +164,51 @@ export type CatalogApartment = TranslatableRecordMeta & {
 export type CatalogImageUpload = {
   image_url: string;
   storage_key: string;
+};
+
+export type AdminUsersMetrics = {
+  online_now: number;
+  registered_accounts: number;
+  guest_sessions: number;
+  total_observed_sessions: number;
+};
+
+export type AdminOnlineSession = {
+  session_key: string;
+  session_type: 'guest' | 'registered';
+  display_name: string;
+  email: string;
+  phone_number: string;
+  role: string;
+  locale: string;
+  current_path: string;
+  user_agent: string;
+  first_seen_at: string;
+  last_seen_at: string;
+};
+
+export type AdminRegisteredUser = {
+  id: number;
+  email: string;
+  phone_number: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  last_login: string | null;
+  last_seen_at: string | null;
+  is_online: boolean;
+  preferred_language: string;
+  city: string;
+  district: string;
+};
+
+export type AdminUsersOverview = {
+  metrics: AdminUsersMetrics;
+  online_window_minutes: number;
+  refreshed_at: string;
+  online_sessions: AdminOnlineSession[];
+  registered_users: AdminPaginatedResponse<AdminRegisteredUser>;
 };

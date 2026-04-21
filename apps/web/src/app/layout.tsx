@@ -4,6 +4,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import { PresenceHeartbeat } from '@/components/tracking/presence-heartbeat';
 import { getServerLocale } from '@/lib/i18n';
 
 export const metadata: Metadata = {
@@ -20,7 +21,10 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 
   return (
     <html lang={locale}>
-      <body>{children}</body>
+      <body>
+        <PresenceHeartbeat />
+        {children}
+      </body>
     </html>
   );
 }

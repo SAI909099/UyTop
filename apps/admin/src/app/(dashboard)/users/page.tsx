@@ -1,34 +1,29 @@
-import { Inter } from 'next/font/google';
+import { UsersOverview } from '@/components/users/users-overview';
+import { getUsersOverview } from '@/lib/api/users';
+import { getServerLocale } from '@/lib/i18n';
 
-const pageFont = Inter({
-  subsets: ['latin'],
-});
+const PAGE_SIZE = 20;
 
-export default function UsersPage() {
-  return (
-    <section className={`users-workspace-page ${pageFont.className}`}>
-      <header className="users-workspace-header">
-        <div className="users-workspace-copy">
-          <p className="users-workspace-eyebrow">Users</p>
-          <h1>User workspace</h1>
-          <p>
-            A clean white canvas for building the user-management experience container by container, without forcing any
-            structure before we are ready.
-          </p>
-        </div>
+function parsePage(value: string | string[] | undefined) {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  const parsed = Number(rawValue ?? 1);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
 
-        <div className="users-workspace-accent" aria-hidden="true">
-          <span />
-          <small>Prepared for custom modules</small>
-        </div>
-      </header>
+type UsersPageProps = {
+  searchParams?: Promise<{
+    page?: string | string[];
+  }>;
+};
 
-      <section className="users-workspace-canvas" aria-label="Users page workspace canvas">
-        <div className="users-workspace-canvas-mark">
-          <span className="users-workspace-canvas-dot" aria-hidden="true" />
-          <p>White workspace ready for future containers</p>
-        </div>
-      </section>
-    </section>
-  );
+export default async function UsersPage({ searchParams }: UsersPageProps) {
+  const locale = await getServerLocale();
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const requestedPage = parsePage(resolvedSearchParams.page);
+  const overview = await getUsersOverview({
+    page: requestedPage,
+    pageSize: PAGE_SIZE,
+  });
+
+  return <UsersOverview locale={locale} overview={overview} />;
 }

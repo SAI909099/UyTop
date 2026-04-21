@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
 import { getPublicMapApartments } from "@/lib/api/public";
 import { buildLocalizedPath, type LocaleCode } from "@/lib/i18n";
@@ -13,89 +13,54 @@ const heroMapCopy: Record<
     loadingLabel: string;
     loadingTitle: string;
     loadingCopy: string;
+    emptyLabel: string;
+    emptyTitle: string;
+    emptyCopy: string;
     errorLabel: string;
     errorTitle: string;
     errorCopy: string;
     retry: string;
     openFullMap: string;
-    turnOnLocation: string;
-    previewLabel: string;
-    previewTitle: string;
-    previewCopy: string;
-    hideMap: string;
-    demandLabel: string;
-    demandTitle: string;
-    demandCopy: string;
-    publishedResidences: string;
-    activeCityAreas: string;
-    showMap: string;
   }
 > = {
   uz: {
     loadingLabel: "Jonli xarita yuklanmoqda",
-    loadingTitle: "Shahar ko‘rinishi tayyorlanmoqda.",
-    loadingCopy: "Birinchi ekran yengil qolishi uchun xarita faqat siz so‘raganingizda ishga tushadi.",
+    loadingTitle: "Sotuvdagi uylar xaritaga joylanmoqda.",
+    loadingCopy: "Bosh sahifadagi xarita jonli e’lonlarni yuklab, sizga haqiqiy joylashuvlarni ko‘rsatadi.",
+    emptyLabel: "Hozircha uylar topilmadi",
+    emptyTitle: "Bu ko‘rinish uchun hali xarita nuqtalari yo‘q.",
+    emptyCopy: "Yangi e’lonlar chop etilgach, sotuvdagi uylar shu yerda xarita ustida ko‘rinadi.",
     errorLabel: "Xarita vaqtincha mavjud emas",
     errorTitle: "Jonli xaritani hozir yuklab bo‘lmadi.",
-    errorCopy: "Shu yerning o‘zida qayta urinib ko‘ring yoki to‘liq xarita sahifasini oching.",
+    errorCopy: "Qayta urinib ko‘ring yoki to‘liq xarita sahifasi orqali inventarni oching.",
     retry: "Qayta urinish",
     openFullMap: "To‘liq xarita",
-    turnOnLocation: "Joylashuvni yoqish",
-    previewLabel: "Jonli xarita ko‘rinishi",
-    previewTitle: "Shaharni kerak bo‘lganda oching.",
-    previewCopy: "Bosh sahifadagi ko‘rinish talab bo‘yicha ochiladi. Geolokatsiya uchun alohida xarita sahifasiga o‘ting.",
-    hideMap: "Xaritani yopish",
-    demandLabel: "Talab bo‘yicha xarita",
-    demandTitle: "Bosh sahifani tez saqlang. Xarita kerak bo‘lganda ochilsin.",
-    demandCopy:
-      "Jonli xarita endi birinchi ekranni sekinlashtirmaydi. Tez ko‘rish uchun shu yerda oching yoki yaqin atrofni topish uchun xarita sahifasiga o‘ting.",
-    publishedResidences: "E’lon qilingan uylar",
-    activeCityAreas: "Faol hududlar",
-    showMap: "Xaritani ko‘rsatish",
   },
   en: {
     loadingLabel: "Loading live map",
-    loadingTitle: "Preparing the city view.",
-    loadingCopy: "The map only initializes after you ask for it, so the homepage stays lighter on first load.",
+    loadingTitle: "Placing live homes on the map.",
+    loadingCopy: "The homepage is loading the current homes for sale so the hero can open with real locations.",
+    emptyLabel: "No homes visible yet",
+    emptyTitle: "There are no live map points for this view yet.",
+    emptyCopy: "As soon as new homes are published, they will appear here directly on the hero map.",
     errorLabel: "Map unavailable",
     errorTitle: "The live map could not be loaded right now.",
-    errorCopy: "Try again here or open the dedicated map page directly if you still want the full live experience.",
+    errorCopy: "Try again here or open the dedicated map page to continue browsing the inventory.",
     retry: "Retry map",
     openFullMap: "Open full map",
-    turnOnLocation: "Turn on location",
-    previewLabel: "Live map preview",
-    previewTitle: "Open the city only when you need it.",
-    previewCopy: "The homepage preview is now on demand. For location access, jump into the dedicated map page.",
-    hideMap: "Hide map",
-    demandLabel: "Map on demand",
-    demandTitle: "Keep the homepage fast. Open the map only when you want it.",
-    demandCopy:
-      "The live map no longer slows the first screen. Open it here for a quick preview, or jump into the dedicated map page when you want nearby discovery.",
-    publishedResidences: "Published residences",
-    activeCityAreas: "Active city areas",
-    showMap: "Show map",
   },
   ru: {
     loadingLabel: "Загрузка живой карты",
-    loadingTitle: "Готовим вид на город.",
-    loadingCopy: "Карта запускается только по запросу, поэтому первый экран остаётся легче.",
+    loadingTitle: "Размещаем доступные объекты на карте.",
+    loadingCopy: "Главная страница загружает реальные квартиры в продаже, чтобы сразу показать их на карте.",
+    emptyLabel: "Пока нет объектов",
+    emptyTitle: "Для этого вида пока нет точек на карте.",
+    emptyCopy: "Как только новые квартиры будут опубликованы, они появятся здесь прямо в hero-блоке.",
     errorLabel: "Карта недоступна",
     errorTitle: "Сейчас не удалось загрузить живую карту.",
-    errorCopy: "Попробуйте ещё раз здесь или сразу откройте полную карту.",
+    errorCopy: "Попробуйте ещё раз или откройте отдельную страницу карты для просмотра каталога.",
     retry: "Повторить",
     openFullMap: "Открыть карту",
-    turnOnLocation: "Включить геолокацию",
-    previewLabel: "Предпросмотр карты",
-    previewTitle: "Открывайте город только когда это нужно.",
-    previewCopy: "Предпросмотр на главной странице теперь открывается по запросу. Для геолокации перейдите на отдельную карту.",
-    hideMap: "Скрыть карту",
-    demandLabel: "Карта по запросу",
-    demandTitle: "Сохраняйте главную страницу быстрой. Открывайте карту только при необходимости.",
-    demandCopy:
-      "Живая карта больше не замедляет первый экран. Откройте её здесь для быстрого просмотра или перейдите на отдельную карту для поиска рядом.",
-    publishedResidences: "Опубликованные квартиры",
-    activeCityAreas: "Активные районы",
-    showMap: "Показать карту",
   },
 };
 
@@ -104,10 +69,20 @@ const LazyHomeLiveMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <article className="home-map-launchpad home-map-launchpad-loading premium-surface">
-        <p className="section-label">Loading live map</p>
-        <h2>Preparing the city view.</h2>
-        <p>The map only initializes after you ask for it, so the homepage stays lighter on first load.</p>
+      <article className="home-map-hero-state home-map-hero-state-loading">
+        <div className="home-map-hero-state-grid" aria-hidden="true">
+          <span className="home-map-hero-state-route home-map-hero-state-route-primary" />
+          <span className="home-map-hero-state-route home-map-hero-state-route-secondary" />
+          <span className="home-map-hero-state-pin home-map-hero-state-pin-primary">$10K</span>
+          <span className="home-map-hero-state-pin home-map-hero-state-pin-secondary">$12K</span>
+          <span className="home-map-hero-state-pin home-map-hero-state-pin-tertiary">$15K</span>
+        </div>
+
+        <div className="home-map-hero-state-copy">
+          <p className="section-label">Loading live map</p>
+          <h2>Placing live homes on the map.</h2>
+          <p>The homepage is loading the current homes for sale so the hero can open with real locations.</p>
+        </div>
       </article>
     ),
   },
@@ -115,130 +90,101 @@ const LazyHomeLiveMap = dynamic(
 
 type HomeHeroMapExperienceProps = {
   locale: LocaleCode;
-  liveCities: number;
-  totalHomes: number;
 };
 
-type MapRevealStatus = "idle" | "loading" | "ready" | "error";
+type HeroMapStatus = "loading" | "ready" | "empty" | "error";
 
-export function HomeHeroMapExperience({ locale, liveCities, totalHomes }: HomeHeroMapExperienceProps) {
-  const [isMapOpen, setIsMapOpen] = useState(false);
-  const [items, setItems] = useState<PublicMapApartment[] | null>(null);
-  const [status, setStatus] = useState<MapRevealStatus>("idle");
-  const [, startTransition] = useTransition();
+async function fetchHeroMapApartments() {
+  const response = await getPublicMapApartments();
+  return response.results;
+}
+
+export function HomeHeroMapExperience({ locale }: HomeHeroMapExperienceProps) {
+  const [items, setItems] = useState<PublicMapApartment[]>([]);
+  const [status, setStatus] = useState<HeroMapStatus>("loading");
   const copy = heroMapCopy[locale];
   const mapPath = buildLocalizedPath(locale, "/map");
-  const locatePath = `${mapPath}?locate=1`;
 
-  const openMap = () => {
-    setIsMapOpen(true);
-
-    if (items || status === "loading") {
-      return;
-    }
-
+  const loadMap = () => {
     setStatus("loading");
 
-    startTransition(() => {
-      getPublicMapApartments()
-        .then((response) => {
-          setItems(response.results);
-          setStatus("ready");
-        })
-        .catch(() => {
-          setStatus("error");
-        });
-    });
+    fetchHeroMapApartments()
+      .then((nextItems) => {
+        setItems(nextItems);
+        setStatus(nextItems.length ? "ready" : "empty");
+      })
+      .catch(() => {
+        setItems([]);
+        setStatus("error");
+      });
   };
 
-  if (isMapOpen && status === "error") {
-    return (
-      <article className="home-map-launchpad home-map-launchpad-error premium-surface" id="map-launchpad">
-        <p className="section-label">{copy.errorLabel}</p>
-        <h2>{copy.errorTitle}</h2>
-        <p>{copy.errorCopy}</p>
+  useEffect(() => {
+    let cancelled = false;
 
-        <div className="home-map-launchpad-actions">
-          <button type="button" className="button button-primary" onClick={openMap}>
+    fetchHeroMapApartments()
+      .then((nextItems) => {
+        if (cancelled) {
+          return;
+        }
+
+        setItems(nextItems);
+        setStatus(nextItems.length ? "ready" : "empty");
+      })
+      .catch(() => {
+        if (cancelled) {
+          return;
+        }
+
+        setItems([]);
+        setStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (status === "ready" && items.length) {
+    return (
+      <div className="home-map-hero-experience" id="map-launchpad">
+        <LazyHomeLiveMap items={items} locale={locale} variant="hero" />
+      </div>
+    );
+  }
+
+  const isLoading = status === "loading";
+  const isError = status === "error";
+  const label = isLoading ? copy.loadingLabel : isError ? copy.errorLabel : copy.emptyLabel;
+  const title = isLoading ? copy.loadingTitle : isError ? copy.errorTitle : copy.emptyTitle;
+  const body = isLoading ? copy.loadingCopy : isError ? copy.errorCopy : copy.emptyCopy;
+
+  return (
+    <article className={`home-map-hero-state home-map-hero-state-${status}`} id="map-launchpad">
+      <div className="home-map-hero-state-grid" aria-hidden="true">
+        <span className="home-map-hero-state-route home-map-hero-state-route-primary" />
+        <span className="home-map-hero-state-route home-map-hero-state-route-secondary" />
+        <span className="home-map-hero-state-pin home-map-hero-state-pin-primary">$10K</span>
+        <span className="home-map-hero-state-pin home-map-hero-state-pin-secondary">$12K</span>
+        <span className="home-map-hero-state-pin home-map-hero-state-pin-tertiary">$15K</span>
+      </div>
+
+      <div className="home-map-hero-state-copy">
+        <p className="section-label">{label}</p>
+        <h2>{title}</h2>
+        <p>{body}</p>
+      </div>
+
+      {isLoading ? null : (
+        <div className="home-map-hero-state-actions">
+          <button type="button" className="button button-primary" onClick={loadMap}>
             {copy.retry}
           </button>
           <a href={mapPath} className="button button-secondary">
             {copy.openFullMap}
           </a>
-          <a href={locatePath} className="button button-ghost">
-            {copy.turnOnLocation}
-          </a>
         </div>
-      </article>
-    );
-  }
-
-  if (isMapOpen && status === "loading") {
-    return (
-      <article className="home-map-launchpad home-map-launchpad-loading premium-surface" id="map-launchpad">
-        <p className="section-label">{copy.loadingLabel}</p>
-        <h2>{copy.loadingTitle}</h2>
-        <p>{copy.loadingCopy}</p>
-      </article>
-    );
-  }
-
-  if (isMapOpen && items) {
-    return (
-      <div className="home-map-preview-shell" id="map-launchpad">
-        <div className="home-map-preview-toolbar premium-surface">
-          <div className="home-map-preview-copy">
-            <p className="section-label">{copy.previewLabel}</p>
-            <h2>{copy.previewTitle}</h2>
-            <p>{copy.previewCopy}</p>
-          </div>
-
-          <div className="home-map-preview-actions">
-            <button type="button" className="button button-secondary" onClick={() => setIsMapOpen(false)}>
-              {copy.hideMap}
-            </button>
-            <a href={mapPath} className="button button-ghost">
-              {copy.openFullMap}
-            </a>
-            <a href={locatePath} className="button button-primary">
-              {copy.turnOnLocation}
-            </a>
-          </div>
-        </div>
-
-        <LazyHomeLiveMap items={items} locale={locale} variant="preview" />
-      </div>
-    );
-  }
-
-  return (
-    <article className="home-map-launchpad premium-surface" id="map-launchpad">
-      <p className="section-label">{copy.demandLabel}</p>
-      <h2>{copy.demandTitle}</h2>
-      <p>{copy.demandCopy}</p>
-
-      <div className="home-map-launchpad-metrics">
-        <article>
-          <strong>{totalHomes}</strong>
-          <span>{copy.publishedResidences}</span>
-        </article>
-        <article>
-          <strong>{liveCities}</strong>
-          <span>{copy.activeCityAreas}</span>
-        </article>
-      </div>
-
-      <div className="home-map-launchpad-actions">
-        <button type="button" className="button button-primary" onClick={openMap}>
-          {copy.showMap}
-        </button>
-        <a href={locatePath} className="button button-secondary">
-          {copy.turnOnLocation}
-        </a>
-        <a href={mapPath} className="button button-ghost">
-          {copy.openFullMap}
-        </a>
-      </div>
+      )}
     </article>
   );
 }

@@ -1,4 +1,7 @@
+import { getServerAuthUser } from '@/lib/auth-server';
 import { buildLocalizedPath, getServerLocale, type LocaleCode, webDictionary } from '@/lib/i18n';
+
+import { HomeAuthControls } from '../auth/home-auth-controls';
 
 import { HomeLanguageSwitcher } from './home-language-switcher';
 
@@ -15,6 +18,7 @@ export async function HomePrimaryNav({
 }: HomePrimaryNavProps) {
   const locale = localeProp ?? (await getServerLocale());
   const dictionary = webDictionary[locale];
+  const authUser = await getServerAuthUser();
   const resolvedCtaHref = ctaHref ?? buildLocalizedPath(locale, '/projects');
 
   return (
@@ -35,10 +39,23 @@ export async function HomePrimaryNav({
           <a href={buildLocalizedPath(locale, '/residences')}>{dictionary.nav.residences}</a>
         </div>
 
-        <HomeLanguageSwitcher locale={locale} label={dictionary.nav.language} />
-        <a href={resolvedCtaHref} className="landing-button landing-button-primary home-nav-cta">
-          {ctaLabel ?? dictionary.nav.cta}
-        </a>
+        <div className="home-nav-actions">
+          <HomeLanguageSwitcher locale={locale} label={dictionary.nav.language} />
+          <HomeAuthControls
+            locale={locale}
+            initialUser={authUser}
+            labels={{
+              login: dictionary.nav.login,
+              register: dictionary.nav.register,
+              logout: dictionary.nav.logout,
+              account: dictionary.nav.account,
+              signingOut: dictionary.nav.signingOut,
+            }}
+          />
+          <a href={resolvedCtaHref} className="landing-button landing-button-primary home-nav-cta">
+            {ctaLabel ?? dictionary.nav.cta}
+          </a>
+        </div>
       </div>
     </nav>
   );

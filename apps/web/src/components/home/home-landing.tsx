@@ -2,6 +2,7 @@ import { buildLocalizedPath, type LocaleCode } from '@/lib/i18n';
 import { formatCompactNumber, formatCurrency } from '@/lib/utils/format';
 import type { PublicProject } from '@/types/home';
 
+import { HomeHeroMapExperience } from './home-hero-map-experience';
 import { HomePrimaryNav } from './home-nav';
 
 type HomeLandingProps = {
@@ -174,37 +175,6 @@ function getProjectLocation(project: PublicProject) {
   return project.district?.name ?? project.city.name;
 }
 
-function getProjectAddressSnippet(address: string) {
-  return address
-    .split(',')
-    .map((part) => part.trim())
-    .find(Boolean) ?? '';
-}
-
-function getHeroPreviewMeta(project: PublicProject, deliveryFallback: string) {
-  return Array.from(
-    new Set(
-      [
-        project.location_label || getProjectLocation(project),
-        getProjectAddressSnippet(project.address),
-        project.delivery_window || deliveryFallback,
-      ].filter(Boolean)
-    )
-  ).slice(0, 3);
-}
-
-function getHeroPreviewPills(project: PublicProject, deliveryFallback: string, projectBuildingsLabel: string) {
-  return Array.from(
-    new Set(
-      [
-        getProjectLocation(project),
-        project.delivery_window || deliveryFallback,
-        project.building_count > 0 ? `${project.building_count} ${projectBuildingsLabel}` : '',
-      ].filter(Boolean)
-    )
-  ).slice(0, 3);
-}
-
 function formatProjectPrice(value: string, currency: string, fallback: string) {
   if (!value || Number(value) <= 0) {
     return fallback;
@@ -225,11 +195,6 @@ export function HomeLanding({
   const copy = landingCopy[locale];
   const projectsPath = buildLocalizedPath(locale, '/projects');
   const mapPath = buildLocalizedPath(locale, '/map');
-  const leadProject = featuredProjects[0] ?? null;
-  const leadProjectMeta = leadProject ? getHeroPreviewMeta(leadProject, copy.deliveryPending) : [];
-  const leadProjectPills = leadProject
-    ? getHeroPreviewPills(leadProject, copy.deliveryPending, copy.projectBuildings)
-    : [];
   const showStats = companiesCount > 1 || projectsCount > 1 || totalPublishedApartments > 1;
 
   return (
@@ -258,74 +223,9 @@ export function HomeLanding({
             </div>
           </div>
 
-          <article className="landing-hero-preview" aria-label={leadProject?.name ?? copy.previewLabel}>
-            <div className="landing-hero-preview-media">
-              {leadProject?.hero_image_url ? (
-                <img
-                  src={leadProject.hero_image_url}
-                  alt={leadProject.name}
-                  className="landing-hero-preview-image"
-                />
-              ) : (
-                <div className="landing-hero-preview-fallback" aria-hidden="true">
-                  <span className="landing-hero-preview-fallback-grid" />
-                  <span className="landing-hero-preview-fallback-point" />
-                  <span className="landing-hero-preview-fallback-point landing-hero-preview-fallback-point-secondary" />
-                </div>
-              )}
-
-              <div className="landing-hero-preview-media-overlay" aria-hidden="true" />
-              <div className="landing-hero-preview-media-chip">
-                {leadProject ? getProjectLocation(leadProject) : copy.previewLabel}
-              </div>
-            </div>
-
-            <div className="landing-hero-preview-body">
-              <div className="landing-hero-preview-summary">
-                <p className="landing-panel-label">{copy.previewLabel}</p>
-                <h2 className="landing-hero-preview-title">{leadProject?.name ?? copy.previewFallbackTitle}</h2>
-
-                <p className="landing-hero-preview-price">
-                  {leadProject
-                    ? formatProjectPrice(leadProject.starting_price, leadProject.currency, copy.awaitingInventory)
-                    : copy.awaitingInventory}
-                </p>
-
-                {leadProjectMeta.length ? (
-                  <div className="landing-hero-preview-meta" aria-label={copy.previewLabel}>
-                    {leadProjectMeta.map((item) => (
-                      <span key={item}>{item}</span>
-                    ))}
-                  </div>
-                ) : (
-                    <p className="landing-hero-preview-note">{copy.previewFallbackCopy}</p>
-                )}
-
-                <p className="landing-hero-preview-secondary">
-                  {leadProject?.headline || leadProject?.address || copy.previewFallbackCopy}
-                </p>
-              </div>
-
-              {leadProjectPills.length ? (
-                <div className="landing-hero-preview-pills" aria-label={copy.previewLabel}>
-                  {leadProjectPills.map((item) => (
-                    <span key={item} className="landing-hero-preview-pill">
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-
-              <div className="landing-hero-preview-actions">
-                <a href={projectsPath} className="landing-button landing-button-primary landing-hero-preview-link">
-                  {copy.previewCta}
-                </a>
-                <a href="#projects" className="landing-hero-preview-more">
-                  {copy.previewMoreCta}
-                </a>
-              </div>
-            </div>
-          </article>
+          <div className="landing-hero-map" aria-label={copy.previewLabel}>
+            <HomeHeroMapExperience locale={locale} />
+          </div>
         </div>
       </section>
 

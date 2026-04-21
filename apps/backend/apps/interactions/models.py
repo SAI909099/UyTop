@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from apps.common.models import TimeStampedModel
@@ -124,3 +125,27 @@ class ContactClickLog(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"ContactClick<{self.listing_id}:{self.channel}>"
+
+
+class VisitorSession(TimeStampedModel):
+    session_key = models.CharField(max_length=64, unique=True, db_index=True)
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="visitor_sessions",
+    )
+    is_guest = models.BooleanField(default=True)
+    locale = models.CharField(max_length=16, default=settings.UYTOP_DEFAULT_LANGUAGE)
+    current_path = models.CharField(max_length=255, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+    ip_hash = models.CharField(max_length=64, blank=True, db_index=True)
+    last_seen_at = models.DateTimeField(auto_now=True, db_index=True)
+
+    class Meta:
+        ordering = ["-last_seen_at", "-created_at"]
+
+    def __str__(self) -> str:
+        session_type = "guest" if self.is_guest else "user"
+        return f"VisitorSession<{self.session_key}:{session_type}>"

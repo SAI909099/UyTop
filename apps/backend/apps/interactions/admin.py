@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ContactClickLog, Favorite, RecentlyViewed, SavedSearch, SearchAlert
+from .models import ContactClickLog, Favorite, RecentlyViewed, SavedSearch, SearchAlert, VisitorSession
 
 
 @admin.register(Favorite)
@@ -31,3 +31,10 @@ class SearchAlertAdmin(admin.ModelAdmin):
 class ContactClickLogAdmin(admin.ModelAdmin):
     list_display = ("id", "listing", "user", "channel", "source", "created_at")
     list_filter = ("channel", "source")
+
+
+@admin.register(VisitorSession)
+class VisitorSessionAdmin(admin.ModelAdmin):
+    list_display = ("session_key", "user", "is_guest", "locale", "current_path", "last_seen_at", "created_at")
+    list_filter = ("is_guest", "locale", "last_seen_at")
+    search_fields = ("session_key", "user__email", "user__phone_number", "current_path", "user_agent")
